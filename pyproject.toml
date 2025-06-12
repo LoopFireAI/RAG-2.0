@@ -1,0 +1,59 @@
+[project]
+name = "rag-2.0"
+version = "1.0.0"
+description = "A production-ready RAG system built with LangGraph and LangChain"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "LoopFire AI", email = "contact@loopfire.ai"}
+]
+keywords = ["rag", "langchain", "langgraph", "ai", "nlp", "embeddings", "chromadb"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "langgraph>=0.2.0",
+    "langgraph-cli[inmem]>=0.3.1",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-community>=0.3.0",
+    "langchain-chroma>=0.1.0",
+    "langsmith>=0.1.0",
+    "chromadb>=0.5.0",
+    "pypdf>=4.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/LoopFireAI/RAG-2.0"
+Repository = "https://github.com/LoopFireAI/RAG-2.0"
+Issues = "https://github.com/LoopFireAI/RAG-2.0/issues"
+
+[project.scripts]
+rag = "main:main"
+ingest = "ingest_documents:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+exclude = [
+    "/.env*",
+    "/chroma_db",
+    "/data",
+    "/.langgraph_api",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
