@@ -8,7 +8,7 @@ A simple command-line interface for the RAG system.
 import sys
 from typing import Optional
 from langchain_core.messages import HumanMessage
-from rag_agent import create_rag_graph
+from rag_2_0.agents.rag_agent import create_rag_graph
 
 def run_rag_query(query: str) -> None:
     """Run a single RAG query and display results."""

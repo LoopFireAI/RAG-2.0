@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Quick test of the simple RAG agent."""
 
-from rag_agent import create_rag_graph
+from rag_2_0.agents.rag_agent import create_rag_graph
 from langchain_core.messages import HumanMessage
 
 def test_rag():
