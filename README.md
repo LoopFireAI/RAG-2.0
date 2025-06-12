@@ -33,11 +33,11 @@ RAG-2.0/
 │   ├── __init__.py
 │   └── test_rag_agent.py
 ├── configs/                     # Configuration files
-│   ├── .env.example             # Environment variables template
-│   └── langgraph.json           # LangGraph Studio configuration
+│   └── .env.example             # Environment variables template
 ├── data/                        # Document storage directory
 ├── chroma_db/                   # Vector database (auto-generated)
 ├── pyproject.toml               # Project metadata and dependencies
+├── langgraph.json               # LangGraph Studio configuration
 ├── .gitignore                   # Git ignore patterns
 └── README.md                    # This file
 ```
@@ -113,7 +113,7 @@ python tests/test_rag_agent.py
 
 4. **LangGraph Studio**: Open the project in LangGraph Studio for visual workflow editing:
 ```bash
-langgraph up --config configs/langgraph.json
+langgraph dev
 ```
 
 ## API Reference
