@@ -36,7 +36,7 @@ Issues = "https://github.com/LoopFireAI/RAG-2.0/issues"
 
 [project.scripts]
 rag = "scripts.main:main"
-ingest = "rag_2_0.ingestion.document_ingester:main"
+ingest = "src.rag_2_0.ingestion.document_ingester:main"
 
 [build-system]
 requires = ["hatchling"]

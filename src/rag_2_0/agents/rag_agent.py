@@ -2,15 +2,19 @@
 Simple RAG Agent for LangGraph Studio.
 """
 
-from typing import TypedDict, List, Annotated
+from typing import TypedDict, List, Annotated, Literal
 import operator
 import os
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
+from langgraph.graph import MessagesState
+from langchain.tools.retriever import create_retriever_tool
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
+
+from pydantic import BaseModel, Field
 
 load_dotenv()
 
@@ -20,6 +24,8 @@ class RAGState(TypedDict):
     query: str
     documents: List[str]
     context: str
+    grade: Literal["yes", "no"]
+    is_social_media: bool  # Add flag for social media detection
 
 # Initialize components
 llm = ChatOpenAI(
@@ -37,6 +43,66 @@ vector_store = Chroma(
     embedding_function=embeddings,
     persist_directory="./chroma_db"
 )
+
+GRADE_PROMPT = (
+    "You are a grader assessing relevance of a retrieved document to a user question. \n "
+    "Here is the retrieved document: \n\n {context} \n\n"
+    "Here is the user question: {question} \n"
+    "If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n"
+    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."
+)
+
+SOCIAL_MEDIA_PROMPT = (
+    "You are a social media content creator. Create a short, engaging post based on the following information. "
+    "The post should be concise, use appropriate hashtags, and be engaging for social media. "
+    "Keep it under 280 characters for Twitter/X compatibility.\n\n"
+    "Information to use:\n{context}\n\n"
+    "Create a social media post:"
+)
+
+def detect_social_media_request(state: RAGState) -> RAGState:
+    """Detect if the query is requesting a social media post."""
+    query = state["query"].lower()
+    
+    # Keywords that might indicate a social media post request
+    social_media_keywords = [
+        "tweet", "twitter", "post", "social media", "linkedin", "facebook",
+        "instagram", "thread", "threads", "make a post", "create a post"
+    ]
+    
+    is_social_media = any(keyword in query for keyword in social_media_keywords)
+    return {"is_social_media": is_social_media}
+
+def generate_social_media_post(state: RAGState) -> RAGState:
+    """Generate a social media post based on the context."""
+    query = state["query"]
+    
+    # First retrieve documents for the social media post
+    results = vector_store.similarity_search(
+        query, 
+        k=int(os.getenv("TOP_K", 3))
+    )
+    
+    documents = [doc.page_content for doc in results]
+    context = "\n\n".join(documents)
+    
+    prompt = SOCIAL_MEDIA_PROMPT.format(context=context)
+    response = llm.invoke([HumanMessage(content=prompt)])
+    
+    return {"messages": [response]}
+
+def grade_documents(state: RAGState) -> RAGState:
+    """Grade the relevance of retrieved documents to the query."""
+    query = state["query"]
+    context = state["context"]
+    
+    prompt = GRADE_PROMPT.format(question=query, context=context)
+    response = llm.invoke([HumanMessage(content=prompt)])
+    
+    # Extract the grade from the response
+    grade = "yes" if "yes" in response.content.lower() else "no"
+    
+    return {"grade": grade}
 
 def extract_query(state: RAGState) -> RAGState:
     """Extract query from messages."""
@@ -77,8 +143,11 @@ def generate_response(state: RAGState) -> RAGState:
     """Generate response using retrieved context."""
     query = state["query"]
     context = state["context"]
+    grade = state.get("grade", "yes")  # Default to "yes" if not present
     
-    prompt = f"""Based on the following context, answer the question.
+    # Only use context if it was graded as relevant
+    if grade == "yes":
+        prompt = f"""Based on the following context, answer the question.
 
 Context:
 {context}
@@ -86,6 +155,12 @@ Context:
 Question: {query}
 
 Answer:"""
+    else:
+        prompt = f"""I don't have enough relevant information to answer this question accurately.
+
+Question: {query}
+
+Answer: I apologize, but I don't have enough relevant information to provide a confident answer to your question."""
     
     response = llm.invoke([HumanMessage(content=prompt)])
     
@@ -104,14 +179,31 @@ def create_rag_graph():
     
     # Add nodes
     workflow.add_node("extract_query", extract_query)
+    workflow.add_node("detect_social_media", detect_social_media_request)
     workflow.add_node("retrieve", retrieve_documents)
+    workflow.add_node("grade_documents", grade_documents)
     workflow.add_node("generate", generate_response)
+    workflow.add_node("generate_social_media", generate_social_media_post)
     
     # Define workflow
     workflow.set_entry_point("extract_query")
-    workflow.add_edge("extract_query", "retrieve")
-    workflow.add_edge("retrieve", "generate")
+    
+    # Add conditional edge for social media detection
+    workflow.add_edge("extract_query", "detect_social_media")
+    workflow.add_conditional_edges(
+        "detect_social_media",
+        lambda x: "generate_social_media" if x["is_social_media"] else "retrieve",
+        {
+            "generate_social_media": "generate_social_media",
+            "retrieve": "retrieve"
+        }
+    )
+    
+    # Add edges for regular RAG flow
+    workflow.add_edge("retrieve", "grade_documents")
+    workflow.add_edge("grade_documents", "generate")
     workflow.add_edge("generate", END)
+    workflow.add_edge("generate_social_media", END)
     
     return workflow.compile()
 
