@@ -78,3 +78,10 @@ chroma_db/
 # Temporary files
 *.tmp
 *.temp
+
+
+# credentials json
+*credentials.json
+
+# token json 
+*token.json
