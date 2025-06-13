@@ -24,6 +24,7 @@ class RAGState(TypedDict):
     query: str
     documents: List[str]
     context: str
+    sources: List[str]  # Add sources to state
     grade: Literal["yes", "no"]
     is_social_media: bool  # Add flag for social media detection
 
@@ -133,18 +134,27 @@ def retrieve_documents(state: RAGState) -> RAGState:
     
     documents = [doc.page_content for doc in results]
     context = "\n\n".join(documents)
+    
+    # Extract sources from metadata
+    sources = []
+    for doc in results:
+        if 'source' in doc.metadata:
+            sources.append(doc.metadata['source'])
 
     # Debug print statements
     print(f"[DEBUG] Retrieved {len(results)} documents for query: '{query}'")
     for i, doc in enumerate(results):
         try:
             print(f"[DEBUG] Doc {i+1} content (first 100 chars): {doc.page_content[:100]}")
+            if 'source' in doc.metadata:
+                print(f"[DEBUG] Doc {i+1} source: {doc.metadata['source']}")
         except Exception as e:
             print(f"[DEBUG] Error reading content of doc {i+1}: {e}")
     
     return {
         "documents": documents,
-        "context": context
+        "context": context,
+        "sources": sources
     }
 
 def generate_response(state: RAGState) -> RAGState:
@@ -152,17 +162,23 @@ def generate_response(state: RAGState) -> RAGState:
     query = state["query"]
     context = state["context"]
     grade = state.get("grade", "yes")  # Default to "yes" if not present
+    sources = state.get("sources", [])  # Get sources from state
     
     # Only use context if it was graded as relevant
     if grade == "yes":
-        prompt = f"""Based on the following context, answer the question.
+        # Format sources as markdown links
+        sources_text = "\n\nSources:\n" + "\n".join([f"- [View Document]({source})" for source in sources]) if sources else ""
+        
+        prompt = f"""Based on the following context, answer the question. Include relevant source links in your response.
 
 Context:
 {context}
 
 Question: {query}
 
-Answer:"""
+{sources_text}
+
+Answer: Please provide your response and include the source links in markdown format like this: [Document Title](link)."""
     else:
         prompt = f"""I don't have enough relevant information to answer this question accurately.
 
