@@ -133,6 +133,14 @@ def retrieve_documents(state: RAGState) -> RAGState:
     
     documents = [doc.page_content for doc in results]
     context = "\n\n".join(documents)
+
+    # Debug print statements
+    print(f"[DEBUG] Retrieved {len(results)} documents for query: '{query}'")
+    for i, doc in enumerate(results):
+        try:
+            print(f"[DEBUG] Doc {i+1} content (first 100 chars): {doc.page_content[:100]}")
+        except Exception as e:
+            print(f"[DEBUG] Error reading content of doc {i+1}: {e}")
     
     return {
         "documents": documents,

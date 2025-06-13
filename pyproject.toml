@@ -31,6 +31,8 @@ dependencies = [
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.2",
     "langchain-google-community[drive]>=2.0.7",
+    "pypdf2>=3.0.1",
+    "pycryptodome>=3.23.0",
 ]
 
 [project.urls]

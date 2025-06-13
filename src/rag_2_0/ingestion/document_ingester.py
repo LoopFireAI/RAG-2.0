@@ -12,6 +12,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from dotenv import load_dotenv
+from langchain_google_community import GoogleDriveLoader
 
 load_dotenv()
 
@@ -40,40 +41,37 @@ class DocumentIngester:
         )
     
     def load_documents(self) -> List[Document]:
-        """Load documents from the data directory."""
+        """Load documents from Google Drive folder."""
         documents = []
-        
-        if not self.data_dir.exists():
-            print(f"Data directory {self.data_dir} does not exist.")
-            return documents
-        
-        for file_path in self.data_dir.iterdir():
-            if file_path.is_file():
-                try:
-                    if file_path.suffix.lower() == '.pdf':
-                        loader = PyPDFLoader(str(file_path))
-                        docs = loader.load()
-                        print(f"Loaded PDF: {file_path.name} ({len(docs)} pages)")
-                    elif file_path.suffix.lower() == '.txt':
-                        loader = TextLoader(str(file_path))
-                        docs = loader.load()
-                        print(f"Loaded text file: {file_path.name}")
-                    else:
-                        print(f"Skipping unsupported file: {file_path.name}")
-                        continue
-                    
-                    # Add metadata
-                    for doc in docs:
-                        doc.metadata.update({
-                            "source_file": file_path.name,
-                            "file_type": file_path.suffix.lower()
-                        })
-                    
-                    documents.extend(docs)
-                    
-                except Exception as e:
-                    print(f"Error loading {file_path.name}: {e}")
-        
+        folder_id = "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH"
+        credentials_path = os.getenv("GOOGLE_CREDENTIALS_PATH")
+        token_path = os.getenv("GOOGLE_TOKEN_PATH")
+
+        print(f"Loading documents from Google Drive folder: {folder_id}")
+        print(f"Using credentials: {credentials_path}")
+        print(f"Using token: {token_path}")
+
+        try:
+            loader = GoogleDriveLoader(
+                folder_id=folder_id,
+                credentials_path=credentials_path,
+                token_path=token_path,
+                recursive=False,
+                num_results=1
+            )
+            docs = loader.load()
+            print(f"Loaded {len(docs)} documents from Google Drive.")
+            documents.extend(docs)
+        except Exception as e:
+            print(f"Error loading documents from Google Drive: {e}")
+
+        # Optionally, print out the first 100 characters of each doc for debugging
+        for i, doc in enumerate(documents):
+            try:
+                print(f"Doc {i+1}: {doc.page_content[:100]}")
+            except Exception as e:
+                print(f"Error reading content of doc {i+1}: {e}")
+
         return documents
     
     def chunk_documents(self, documents: List[Document]) -> List[Document]:
