@@ -6,15 +6,11 @@ from typing import TypedDict, List, Annotated, Literal
 import operator
 import os
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
-from langgraph.graph import MessagesState
-from langchain.tools.retriever import create_retriever_tool
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
-
-from pydantic import BaseModel, Field
 
 load_dotenv()
 
@@ -36,6 +32,7 @@ class RAGState(TypedDict):
     # Conversation state
     waiting_for_leader: bool  # Track if we're waiting for leader specification
     original_query: str  # Store the original query when waiting for leader
+    waiting_for_feedback: bool  # Track if we're waiting for user feedback
 
 # Initialize components
 llm = ChatOpenAI(
@@ -139,39 +136,59 @@ def detect_tone_and_leader(state: RAGState) -> RAGState:
     }
 
 def generate_social_media_post(state: RAGState) -> RAGState:
-    """Generate a social media post based on the context and tone."""
+    """Generate a social media post based on the retrieved context and tone."""
     query = state["query"]
+    context = state.get("context", "")
+    grade = state.get("grade", "yes")
     detected_leader = state.get("detected_leader", "default")
     tone_profile = state.get("tone_profile", "Use a professional and helpful tone.")
     
-    # First retrieve documents for the social media post
-    results = vector_store.similarity_search(
-        query, 
-        k=int(os.getenv("TOP_K", 3))
-    )
+    # Only use context if it was graded as relevant
+    if grade == "no":
+        context = "No relevant information found in the knowledge base."
     
-    documents = [doc.page_content for doc in results]
-    context = "\n\n".join(documents)
+    import uuid
+    import time
     
-    prompt = f"""You are tasked with creating a social media post reflecting {detected_leader}'s unique voice and style.
+    start_time = time.time()
+    
+    # Generate unique response ID for feedback correlation
+    response_id = str(uuid.uuid4())
+    
+    prompt = f"""You are tasked with creating a SOCIAL MEDIA POST reflecting {detected_leader}'s unique voice and style.
+
+🎯 SOCIAL MEDIA FORMAT REQUIREMENTS:
+- Keep it concise and engaging (ideal for LinkedIn, X/Twitter)
+- Use emojis strategically to enhance engagement
+- Include relevant hashtags
+- Make it shareable and conversation-starting
+- Maximum 280 characters for X compatibility, or longer for LinkedIn
 
 Tone & Communication Style:
 {tone_profile}
 
-Guidelines:
-- Craft a concise, engaging post suitable for social media platforms like LinkedIn and X.
-- Use a natural tone that aligns with {detected_leader}'s communication style.
-- Incorporate examples from the {detected_leader}'s work.
-- Focus on making the content clear, compelling, and in line with the provided context.
-
-Context:
+Context from Knowledge Base:
 {context}
 
-Please generate a social media post in {detected_leader}'s voice that meets these criteria:"""
+Create a social media post in {detected_leader}'s voice based on the query: {query}
+
+📱 OUTPUT: Generate a ready-to-post social media content with appropriate formatting, emojis, and hashtags."""
     
     response = llm.invoke([HumanMessage(content=prompt)])
     
-    return {"messages": [response]}
+    # Calculate response time
+    response_time_ms = int((time.time() - start_time) * 1000)
+    
+    # Update retrieved docs metadata with response time for feedback
+    if "retrieved_docs_metadata" in state:
+        for doc_meta in state["retrieved_docs_metadata"]:
+            doc_meta["response_time_ms"] = response_time_ms
+    
+    return {
+        "messages": [response],
+        "response_id": response_id,
+        "feedback_collected": False
+    }
 
 def grade_documents(state: RAGState) -> RAGState:
     """Grade the relevance of retrieved documents to the query."""
@@ -209,6 +226,9 @@ def retrieve_documents(state: RAGState) -> RAGState:
     
     # Get feedback storage for document scoring enhancement
     try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
         from rag_2_0.feedback.feedback_storage import FeedbackStorage
         feedback_storage = FeedbackStorage()
     except ImportError:
@@ -346,6 +366,9 @@ Answer: I apologize, but I don't have enough relevant information to provide a c
 def register_response_for_feedback(state: RAGState) -> RAGState:
     """Register response with feedback collector for potential feedback collection."""
     try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
         from rag_2_0.feedback.feedback_collector import FeedbackCollector
         from rag_2_0.feedback.feedback_storage import FeedbackStorage
         
@@ -394,39 +417,89 @@ def register_response_for_feedback(state: RAGState) -> RAGState:
     return state
 
 def elicit_leader(state: RAGState) -> RAGState:
-    """Elicit leader specification if not provided in the query."""
+    """Detect leader specification in the query, defaulting to 'default' if none found."""
     query = state["query"]
-    messages = state.get("messages", [])
     
-    # First, try to detect if a leader is already specified
+    # Try to detect if a leader is already specified
     detection_prompt = f"""Analyze the following query and determine if a specific leader's voice is requested.
     Available leaders: Janelle (strategic business perspective) and Doreen (relational, equity-focused approach).
     
     Query: {query}
     
     Respond with either:
-    1. The leader's name if specified (janelle/doreen)
-    2. "ask" if no leader is specified
+    1. "janelle" if Janelle's voice is requested
+    2. "doreen" if Doreen's voice is requested  
+    3. "default" if no specific leader is mentioned
     
-    Just respond with the leader name or "ask"."""
+    Just respond with the leader name or "default"."""
     
     detection_response = llm.invoke([HumanMessage(content=detection_prompt)])
     response_content = detection_response.content.strip().lower()
     
-    # If no leader is specified, use a simple follow-up question
-    if response_content == "ask":
-        follow_up = "Which leader's voice would you prefer - Janelle or Doreen?"
-        return {
-            "messages": [AIMessage(content=follow_up)],
-            "waiting_for_leader": True,
-            "original_query": query
-        }
+    # Validate response and default to "default" if unclear
+    if response_content not in ["janelle", "doreen"]:
+        response_content = "default"
     
-    # If a leader is detected, proceed with the normal flow
     return {
         "detected_leader": response_content,
         "waiting_for_leader": False
     }
+
+def collect_feedback(state: RAGState) -> RAGState:
+    """Collect feedback from user if appropriate."""
+    print("[DEBUG] collect_feedback node called!")
+    try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from rag_2_0.feedback.feedback_collector import FeedbackCollector
+        from rag_2_0.feedback.feedback_storage import FeedbackStorage
+        from langchain_core.messages import AIMessage
+        
+        # Initialize feedback system
+        storage = FeedbackStorage()
+        collector = FeedbackCollector(storage)
+        
+        response_id = state.get("response_id", "")
+        
+        # Check if we should prompt for feedback - temporarily always prompt for testing
+        print(f"[DEBUG] Checking feedback for response_id: {response_id}")
+        should_prompt = collector.should_prompt_feedback(response_id) if response_id else False
+        print(f"[DEBUG] Should prompt feedback: {should_prompt}")
+        
+        # Temporarily force feedback prompt for testing
+        if response_id:  # Always prompt if we have a response_id
+            # Create feedback prompt message
+            feedback_prompt = """
+📝 **Feedback Request**
+
+How would you rate this response? Please reply with:
+
+**Rating (1-5):** [1=Very Poor, 2=Poor, 3=Okay, 4=Good, 5=Excellent]
+**Optional:** Any specific feedback or suggestions?
+
+Example response: "4 - Good response but could use more specific examples"
+            """.strip()
+            
+            # Add feedback prompt as a message
+            feedback_message = AIMessage(content=feedback_prompt)
+            current_messages = state.get("messages", [])
+            
+            return {
+                "messages": current_messages + [feedback_message],
+                "waiting_for_feedback": True,
+                "response_id": response_id
+            }
+        
+        # No feedback needed, just return current state
+        return {"waiting_for_feedback": False}
+        
+    except ImportError:
+        print("[DEBUG] Feedback system not available")
+        return {"waiting_for_feedback": False}
+    except Exception as e:
+        print(f"[DEBUG] Error in collect_feedback: {e}")
+        return {"waiting_for_feedback": False}
 
 def create_rag_graph():
     """Create the RAG workflow graph."""
@@ -444,45 +517,41 @@ def create_rag_graph():
     workflow.add_node("generate", generate_response)
     workflow.add_node("generate_social_media", generate_social_media_post)
     workflow.add_node("register_feedback", register_response_for_feedback)
+    workflow.add_node("collect_feedback", collect_feedback)
     
     # Define workflow
     workflow.set_entry_point("extract_query")
     
-    # After extract_query, go to detect_social_media
+    # Main pipeline: all requests go through full RAG treatment
     workflow.add_edge("extract_query", "detect_social_media")
+    workflow.add_edge("detect_social_media", "elicit_leader")
     
-    # After detect_social_media, branch:
-    workflow.add_conditional_edges(
-        "detect_social_media",
-        lambda x: "elicit_leader" if x["is_social_media"] else "retrieve",
-        {
-            "elicit_leader": "elicit_leader",
-            "retrieve": "retrieve"
-        }
-    )
+    # After elicit_leader, always proceed to detect_tone
+    workflow.add_edge("elicit_leader", "detect_tone")
     
-    # After elicit_leader, branch:
-    workflow.add_conditional_edges(
-        "elicit_leader",
-        lambda x: "detect_tone" if not x.get("waiting_for_leader", False) else END,
-        {
-            "detect_tone": "detect_tone",
-            END: END
-        }
-    )
-    
-    # After detect_tone, go to generate_social_media
-    workflow.add_edge("detect_tone", "generate_social_media")
-    # After generate_social_media, go to register_feedback
-    workflow.add_edge("generate_social_media", "register_feedback")
-    
-    # Non-social media path
+    # Full RAG pipeline for both paths
+    workflow.add_edge("detect_tone", "retrieve")
     workflow.add_edge("retrieve", "grade_documents")
-    workflow.add_edge("grade_documents", "generate")
+    
+    # Branch at the end based on social media flag
+    workflow.add_conditional_edges(
+        "grade_documents",
+        lambda x: "generate_social_media" if x.get("is_social_media", False) else "generate",
+        {
+            "generate_social_media": "generate_social_media",
+            "generate": "generate"
+        }
+    )
+    
+    # Both paths end with feedback registration
+    workflow.add_edge("generate_social_media", "register_feedback")
     workflow.add_edge("generate", "register_feedback")
     
+    # After registering, collect feedback
+    workflow.add_edge("register_feedback", "collect_feedback")
+    
     # End
-    workflow.add_edge("register_feedback", END)
+    workflow.add_edge("collect_feedback", END)
     
     return workflow.compile()
 
