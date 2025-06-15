@@ -33,6 +33,9 @@ class RAGState(TypedDict):
     response_id: str  # Unique response identifier for feedback correlation
     feedback_collected: bool  # Track if feedback was collected
     retrieved_docs_metadata: List[dict]  # Store document metadata for feedback
+    # Conversation state
+    waiting_for_leader: bool  # Track if we're waiting for leader specification
+    original_query: str  # Store the original query when waiting for leader
 
 # Initialize components
 llm = ChatOpenAI(
@@ -106,7 +109,7 @@ def detect_tone_and_leader(state: RAGState) -> RAGState:
     query = state["query"].lower()
     
     # Available leaders (you can add more here)
-    leaders = ["janelle", "leader2"]  # Add the actual second leader name when you know it
+    leaders = ["janelle", "doreen"]  # Add the actual second leader name when you know it
     
     detected_leader = "default"
     
@@ -390,6 +393,41 @@ def register_response_for_feedback(state: RAGState) -> RAGState:
     
     return state
 
+def elicit_leader(state: RAGState) -> RAGState:
+    """Elicit leader specification if not provided in the query."""
+    query = state["query"]
+    messages = state.get("messages", [])
+    
+    # First, try to detect if a leader is already specified
+    detection_prompt = f"""Analyze the following query and determine if a specific leader's voice is requested.
+    Available leaders: Janelle (strategic business perspective) and Doreen (relational, equity-focused approach).
+    
+    Query: {query}
+    
+    Respond with either:
+    1. The leader's name if specified (janelle/doreen)
+    2. "ask" if no leader is specified
+    
+    Just respond with the leader name or "ask"."""
+    
+    detection_response = llm.invoke([HumanMessage(content=detection_prompt)])
+    response_content = detection_response.content.strip().lower()
+    
+    # If no leader is specified, use a simple follow-up question
+    if response_content == "ask":
+        follow_up = "Which leader's voice would you prefer - Janelle or Doreen?"
+        return {
+            "messages": [AIMessage(content=follow_up)],
+            "waiting_for_leader": True,
+            "original_query": query
+        }
+    
+    # If a leader is detected, proceed with the normal flow
+    return {
+        "detected_leader": response_content,
+        "waiting_for_leader": False
+    }
+
 def create_rag_graph():
     """Create the RAG workflow graph."""
     
@@ -398,8 +436,9 @@ def create_rag_graph():
     
     # Add nodes
     workflow.add_node("extract_query", extract_query)
-    workflow.add_node("detect_tone", detect_tone_and_leader)
     workflow.add_node("detect_social_media", detect_social_media_request)
+    workflow.add_node("elicit_leader", elicit_leader)
+    workflow.add_node("detect_tone", detect_tone_and_leader)
     workflow.add_node("retrieve", retrieve_documents)
     workflow.add_node("grade_documents", grade_documents)
     workflow.add_node("generate", generate_response)
@@ -409,25 +448,40 @@ def create_rag_graph():
     # Define workflow
     workflow.set_entry_point("extract_query")
     
-    # Add tone detection after query extraction
-    workflow.add_edge("extract_query", "detect_tone")
-    workflow.add_edge("detect_tone", "detect_social_media")
+    # After extract_query, go to detect_social_media
+    workflow.add_edge("extract_query", "detect_social_media")
     
-    # Add conditional edge for social media detection
+    # After detect_social_media, branch:
     workflow.add_conditional_edges(
         "detect_social_media",
-        lambda x: "generate_social_media" if x["is_social_media"] else "retrieve",
+        lambda x: "elicit_leader" if x["is_social_media"] else "retrieve",
         {
-            "generate_social_media": "generate_social_media",
+            "elicit_leader": "elicit_leader",
             "retrieve": "retrieve"
         }
     )
     
-    # Add edges for regular RAG flow
+    # After elicit_leader, branch:
+    workflow.add_conditional_edges(
+        "elicit_leader",
+        lambda x: "detect_tone" if not x.get("waiting_for_leader", False) else END,
+        {
+            "detect_tone": "detect_tone",
+            END: END
+        }
+    )
+    
+    # After detect_tone, go to generate_social_media
+    workflow.add_edge("detect_tone", "generate_social_media")
+    # After generate_social_media, go to register_feedback
+    workflow.add_edge("generate_social_media", "register_feedback")
+    
+    # Non-social media path
     workflow.add_edge("retrieve", "grade_documents")
     workflow.add_edge("grade_documents", "generate")
     workflow.add_edge("generate", "register_feedback")
-    workflow.add_edge("generate_social_media", "register_feedback")
+    
+    # End
     workflow.add_edge("register_feedback", END)
     
     return workflow.compile()
