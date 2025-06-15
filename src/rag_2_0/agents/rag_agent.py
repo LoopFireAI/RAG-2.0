@@ -92,12 +92,12 @@ def load_tone_profile(leader_name: str) -> str:
     tone_file = tones_dir / f"{leader_name.lower()}.md"
     
     if tone_file.exists():
-        return tone_file.read_text()
+        return tone_file.read_text(encoding='utf-8')
     else:
         # Fallback to default tone
         default_file = tones_dir / "default.md"
         if default_file.exists():
-            return default_file.read_text()
+            return default_file.read_text(encoding='utf-8')
         else:
             return "Use a professional and helpful tone."
 
@@ -150,16 +150,21 @@ def generate_social_media_post(state: RAGState) -> RAGState:
     documents = [doc.page_content for doc in results]
     context = "\n\n".join(documents)
     
-    prompt = f"""You are creating a social media post in {detected_leader}'s voice. Use the following tone and communication style:
+    prompt = f"""You are tasked with creating a social media post reflecting {detected_leader}'s unique voice and style.
 
+Tone & Communication Style:
 {tone_profile}
 
-Create a short, engaging social media post based on the following information. The post should be concise, use appropriate hashtags, and be engaging for social media. Keep it under 280 characters for Twitter/X compatibility.
+Guidelines:
+- Craft a concise, engaging post suitable for social media platforms like LinkedIn and X.
+- Use a natural tone that aligns with {detected_leader}'s communication style.
+- Incorporate examples from the {detected_leader}'s work.
+- Focus on making the content clear, compelling, and in line with the provided context.
 
-Information to use:
+Context:
 {context}
 
-Create a social media post in {detected_leader}'s style:"""
+Please generate a social media post in {detected_leader}'s voice that meets these criteria:"""
     
     response = llm.invoke([HumanMessage(content=prompt)])
     
