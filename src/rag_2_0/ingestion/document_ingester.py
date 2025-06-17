@@ -14,6 +14,7 @@ from langchain_core.documents import Document
 from dotenv import load_dotenv
 from langchain_google_community import GoogleDriveLoader
 from langchain_community.vectorstores.utils import filter_complex_metadata
+import asyncio
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ class DocumentIngester:
     def __init__(self, data_dir: str = "./data", collection_name: str = "rag_docs"):
         self.data_dir = Path(data_dir)
         self.collection_name = collection_name
+        self.hash_file = os.getenv("HASH_FILE", "ingested_hashes.txt")
         
         # Initialize embeddings
         self.embeddings = OpenAIEmbeddings(
@@ -41,6 +43,20 @@ class DocumentIngester:
             persist_directory="./chroma_db"
         )
     
+    async def load_folder_async(self, folder_id, credentials_path, token_path):
+        loader = GoogleDriveLoader(
+            folder_id=folder_id,
+            credentials_path=credentials_path,
+            token_path=token_path,
+            recursive=True,
+            load_extended_metadata=True,
+            load_auth=True
+        )
+        docs = []
+        async for doc in loader.alazy_load():
+            docs.append(doc)
+        return docs
+
     def _filter_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Filter metadata to only include simple types and ensure source URL is preserved."""
         # First filter out complex types
@@ -53,91 +69,64 @@ class DocumentIngester:
         return filtered_metadata
     
     def load_documents(self) -> List[Document]:
-        """Load documents from Google Drive folders with deduplication."""
+        """Load documents from Google Drive folders with deduplication, using async parallel loading."""
         documents = []
-        seen_hashes = set()
+        seen_hashes = self.load_hashes()
         duplicate_count = 0
-        
-        # List of folder IDs to process
+
         FOLDER_IDS = [
             "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH", 
             "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ", 
             "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT", 
             "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8"
         ]
-        
-        # Get credentials and token paths from environment variables
+
         credentials_path = os.getenv("GOOGLE_CREDENTIALS_PATH")
         token_path = os.getenv("GOOGLE_TOKEN_PATH")
 
-        # Validate required environment variables
         if not credentials_path:
-            raise ValueError(
-                "GOOGLE_CREDENTIALS_PATH environment variable is not set. "
-                "Please set it to the path of your Google credentials JSON file."
-            )
-        
+            raise ValueError("GOOGLE_CREDENTIALS_PATH environment variable is not set.")
         if not token_path:
-            raise ValueError(
-                "GOOGLE_TOKEN_PATH environment variable is not set. "
-                "Please set it to the path where you want to store the token file."
-            )
-
-        # Validate that the files exist
+            raise ValueError("GOOGLE_TOKEN_PATH environment variable is not set.")
         if not os.path.exists(credentials_path):
-            raise FileNotFoundError(
-                f"Credentials file not found at: {credentials_path}. "
-                "Please ensure the path is correct and the file exists."
-            )
+            raise FileNotFoundError(f"Credentials file not found at: {credentials_path}.")
+
+        async def gather_all_folders():
+            tasks = [
+                self.load_folder_async(folder_id, credentials_path, token_path)
+                for folder_id in FOLDER_IDS
+            ]
+            results = await asyncio.gather(*tasks)
+            # Flatten the list of lists
+            return [doc for folder_docs in results for doc in folder_docs]
+
+        all_docs = asyncio.run(gather_all_folders())
 
         def get_document_hash(doc):
-            """Create a hash of the document content and metadata for deduplication."""
             content = doc.page_content
             metadata = doc.metadata
             file_info = f"{metadata.get('name', '')}{metadata.get('size', '')}"
             return hashlib.md5((content + file_info).encode()).hexdigest()
 
-        for folder_id in FOLDER_IDS:
-            print(f"\nProcessing folder: {folder_id}")
-            print(f"Using credentials: {credentials_path}")
-            print(f"Using token: {token_path}")
-
-            try:
-                loader = GoogleDriveLoader(
-                    folder_id=folder_id,
-                    credentials_path=credentials_path,
-                    token_path=token_path,
-                    recursive=True,  # Include subfolders
-                    load_extended_metadata=True,
-                    load_auth=True
-                )
-                docs = loader.load()
-                print(f"Loaded {len(docs)} documents from folder {folder_id}")
-                
-                # Process each document and check for duplicates
-                for doc in docs:
-                    doc.metadata = self._filter_metadata(doc.metadata)
-                    doc_hash = get_document_hash(doc)
-                    
-                    if doc_hash not in seen_hashes:
-                        seen_hashes.add(doc_hash)
-                        documents.append(doc)
-                        print(f"\nAdded unique document: {doc.metadata.get('name', 'Unknown')}")
-                        print("Document Metadata:")
-                        for key, value in doc.metadata.items():
-                            print(f"  {key}: {value}")
-                    else:
-                        duplicate_count += 1
-                        print(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')}")
-                
-            except Exception as e:
-                print(f"Error loading documents from folder {folder_id}: {e}")
-                continue  # Continue with next folder even if one fails
+        for doc in all_docs:
+            doc.metadata = self._filter_metadata(doc.metadata)
+            doc_hash = get_document_hash(doc)
+            if doc_hash not in seen_hashes:
+                seen_hashes.add(doc_hash)
+                documents.append(doc)
+                print(f"\nAdded unique document: {doc.metadata.get('name', 'Unknown')}")
+                print("Document Metadata:")
+                for key, value in doc.metadata.items():
+                    print(f"  {key}: {value}")
+            else:
+                duplicate_count += 1
+                print(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')}")
 
         print(f"\nDocument Loading Summary:")
         print(f"Total unique documents loaded: {len(documents)}")
         print(f"Total duplicates skipped: {duplicate_count}")
-        
+
+        self.save_hashes(seen_hashes)
         return documents
     
     def chunk_documents(self, documents: List[Document]) -> List[Document]:
@@ -179,11 +168,11 @@ class DocumentIngester:
                 return
             
             # Clear existing collection
-            try:
-                self.vector_store.delete_collection()
-                print("Cleared existing collection")
-            except:
-                pass
+            # try:
+            #     # self.vector_store.delete_collection()
+            #     # print("Cleared existing collection")
+            # except:
+            #     pass
             
             # Reinitialize vector store
             self.vector_store = Chroma(
@@ -203,6 +192,17 @@ class DocumentIngester:
         except Exception as e:
             print(f"Error during document ingestion: {e}")
             raise
+
+    def load_hashes(self):
+        if not os.path.exists(self.hash_file):
+            return set()
+        with open(self.hash_file, "r") as f:
+            return set(line.strip() for line in f)
+
+    def save_hashes(self, hashes):
+        with open(self.hash_file, "w") as f:
+            for h in hashes:
+                f.write(h + "\n")
 
 def main():
     """Main entry point for document ingestion."""
