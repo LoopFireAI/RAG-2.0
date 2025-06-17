@@ -46,11 +46,12 @@ llm = ChatOpenAI(
 
 embeddings = OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI_API_KEY"))
 
-# Initialize vector store
+# Initialize vector store with environment-aware persistence
+persist_dir = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
 vector_store = Chroma(
     collection_name="rag_docs",
     embedding_function=embeddings,
-    persist_directory="./chroma_db"
+    persist_directory=persist_dir
 )
 
 GRADE_PROMPT = """You are an expert content evaluator assessing document relevance with precision.

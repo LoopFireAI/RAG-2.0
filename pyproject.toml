@@ -2,7 +2,6 @@
 name = "rag-2.0"
 version = "1.0.0"
 description = "A production-ready RAG system built with LangGraph and LangChain"
-readme = "README.md"
 requires-python = ">=3.12"
 authors = [
     {name = "LoopFire AI", email = "contact@loopfire.ai"}
@@ -31,7 +30,6 @@ dependencies = [
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.2",
     "langchain-google-community[drive]>=2.0.7",
-    "pypdf2>=3.0.1",
     "pycryptodome>=3.23.0",
 ]
 
