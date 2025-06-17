@@ -53,13 +53,30 @@ vector_store = Chroma(
     persist_directory="./chroma_db"
 )
 
-GRADE_PROMPT = (
-    "You are a grader assessing relevance of a retrieved document to a user question. \n "
-    "Here is the retrieved document: \n\n {context} \n\n"
-    "Here is the user question: {question} \n"
-    "If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n"
-    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."
-)
+GRADE_PROMPT = """You are an expert content evaluator assessing document relevance with precision.
+
+DOCUMENT CONTENT:
+{context}
+
+USER QUERY: 
+{question}
+
+EVALUATION CRITERIA:
+1. DIRECT RELEVANCE: Does the document directly address the query topic?
+2. CONCEPTUAL ALIGNMENT: Are the core concepts/themes aligned?
+3. ACTIONABLE CONTENT: Does it provide information that can answer the query?
+4. SPECIFICITY MATCH: Does the detail level match what's being asked?
+
+DECISION FRAMEWORK:
+- "yes" = Document contains substantial relevant content that directly helps answer the query
+- "no" = Document lacks relevant content or only tangentially relates to the query
+
+Think step-by-step:
+1. Identify key concepts in the query
+2. Scan document for matching concepts/examples
+3. Assess if document provides actionable information for the query
+
+RESPONSE: Return only "yes" or "no" """
 
 SOCIAL_MEDIA_PROMPT = (
     "You are a social media content creator. Create a short, engaging post based on the following information. "
@@ -103,39 +120,6 @@ def load_tone_profile(leader_name: str) -> str:
         else:
             return "Use a professional and helpful tone."
 
-def detect_tone_and_leader(state: RAGState) -> RAGState:
-    """Detect leader mention and load appropriate tone profile."""
-    query = state["query"].lower()
-    
-    # Available leaders (you can add more here)
-    leaders = ["janelle", "doreen"]  # Add the actual second leader name when you know it
-    
-    detected_leader = "default"
-    
-    # Check for leader mentions in various formats
-    for leader in leaders:
-        leader_patterns = [
-            f"as {leader}",
-            f"like {leader}",
-            f"{leader} would",
-            f"in {leader}'s voice",
-            f"{leader}'s style",
-            f"how would {leader}",
-            f"@{leader}",
-            leader
-        ]
-        
-        if any(pattern in query for pattern in leader_patterns):
-            detected_leader = leader
-            break
-    
-    # Load the tone profile
-    tone_profile = load_tone_profile(detected_leader)
-    
-    return {
-        "detected_leader": detected_leader,
-        "tone_profile": tone_profile
-    }
 
 def generate_social_media_post(state: RAGState) -> RAGState:
     """Generate a social media post based on the retrieved context and tone."""
@@ -157,24 +141,80 @@ def generate_social_media_post(state: RAGState) -> RAGState:
     # Generate unique response ID for feedback correlation
     response_id = str(uuid.uuid4())
     
-    prompt = f"""You are tasked with creating a SOCIAL MEDIA POST reflecting {detected_leader}'s unique voice and style.
+    # Determine post length and platform optimization based on query
+    is_long_form = "linkedin" in query.lower() or "detailed" in query.lower() or "examples" in query.lower()
+    char_limit = "400-500 characters" if is_long_form else "200-280 characters"
+    platform_focus = "LinkedIn" if is_long_form else "X/Twitter"
+    
+    prompt = f"""You are {detected_leader}, crafting a thoughtful social media post that demonstrates your expertise while being genuinely engaging. You need to balance intelligence with relatability.
 
-🎯 SOCIAL MEDIA FORMAT REQUIREMENTS:
-- Keep it concise and engaging (ideal for LinkedIn, X/Twitter)
-- Use emojis strategically to enhance engagement
-- Include relevant hashtags
-- Make it shareable and conversation-starting
-- Maximum 280 characters for X compatibility, or longer for LinkedIn
-
-Tone & Communication Style:
+YOUR AUTHENTIC VOICE ({detected_leader.upper()}):
 {tone_profile}
 
-Context from Knowledge Base:
+KNOWLEDGE BASE INSIGHTS:
 {context}
 
-Create a social media post in {detected_leader}'s voice based on the query: {query}
+REQUEST:
+{query}
 
-📱 OUTPUT: Generate a ready-to-post social media content with appropriate formatting, emojis, and hashtags."""
+WRITING GUIDELINES:
+- Strike the perfect balance: intelligent but not academic, relatable but not dumbed-down
+- Use {detected_leader}'s signature thinking patterns and language style
+- Ground every insight in SPECIFIC examples from the knowledge base
+- Make complex ideas accessible without losing sophistication
+- Sound like a thought leader having an authentic moment of insight
+
+POST STRUCTURE:
+1. COMPELLING OPENER: Start with a bold insight, surprising data point, or strategic observation that demonstrates your expertise
+
+2. KNOWLEDGE DELIVERY: Present 3 SPECIFIC insights from the research as valuable knowledge you're sharing - focus on teaching and revealing patterns, not asking questions
+
+3. STRATEGIC SYNTHESIS: Connect these insights to show the bigger systemic pattern or business implication - this is where {detected_leader}'s strategic thinking shines
+
+4. SINGLE ENGAGEMENT HOOK: End with ONE well-crafted question or call-to-action that invites meaningful response
+
+CONTENT APPROACH:
+- Lead with knowledge and insights, not questions
+- Each insight should feel like valuable information you're generously sharing
+- Use declarative statements that show expertise: "Here's what the data reveals..." "The pattern I'm seeing..." "What's fascinating is..."
+- Save questions for the very end - just one powerful engagement hook
+
+VOICE CALIBRATION FOR {detected_leader.upper()}:
+- Use strategic language that shows business acumen
+- Include growth/scale thinking where natural
+- Reference systems, patterns, and implications
+- Sound like someone who sees the bigger picture
+- Maintain authority while being approachable
+
+LANGUAGE PATTERNS TO USE:
+- "Here's what the research reveals..."
+- "I've been analyzing patterns in..."
+- "The data shows something fascinating..."
+- "What strikes me about this trend..."
+- "The strategic implication here is..."
+
+FORMATTING RULES:
+- NO asterisks, bold text, or special characters (**text** is forbidden)
+- NO numbered lists (1. 2. 3.) or bullet points  
+- NO headers, subheadings, or section labels
+- Write in clean, flowing paragraphs like natural social media content
+- Use simple line breaks for readability, nothing else
+
+FORBIDDEN:
+- Multiple questions throughout the post
+- ANY formatting symbols: **, ##, •, 1., 2., etc.
+- Section headers like "Identity Influence:" or "Key Insight:"
+- Numbered or bulleted lists of any kind
+- Academic or corporate-style organization
+- More than ONE question (save it for the very end)
+
+WRITING STYLE:
+- Write like you're having an intelligent conversation
+- Flow naturally from one insight to the next
+- Use transitions like "What's fascinating is..." "Here's what caught my attention..." "The pattern I'm seeing..."
+- Keep it conversational but sophisticated
+
+GOAL: Create clean, readable social media content that flows naturally and teaches valuable insights, ending with ONE compelling engagement question."""
     
     response = llm.invoke([HumanMessage(content=prompt)])
     
@@ -314,32 +354,66 @@ def generate_response(state: RAGState) -> RAGState:
     # Only use context if it was graded as relevant
     if grade == "yes":
         # Format sources as markdown links
-        sources_text = "\n\nSources:\n" + "\n".join([f"- [View Document]({source})" for source in sources]) if sources else ""
+        sources_text = "\n\n📚 **Sources:**\n" + "\n".join([f"- [View Document]({source})" for source in sources]) if sources else ""
         
-        prompt = f"""You are responding as {detected_leader}. Use the following tone and communication style:
+        # Analyze query complexity to determine response approach
+        is_analytical = any(word in query.lower() for word in ["analyze", "compare", "evaluate", "assess", "examples", "distinct"])
+        is_actionable = any(word in query.lower() for word in ["how to", "steps", "implement", "strategy", "plan"])
+        
+        response_structure = "analytical" if is_analytical else "actionable" if is_actionable else "informational"
+        
+        prompt = f"""You are {detected_leader.upper()}, responding with your authentic voice and expertise. This is a {response_structure} query requiring a comprehensive, value-driven response.
 
+🎯 YOUR VOICE & PERSPECTIVE ({detected_leader.upper()}):
 {tone_profile}
 
-Based on the following context, answer the question in the specified tone and style. Include relevant source links in your response.
+📋 QUERY TO ADDRESS:
+{query}
 
-Context:
+📊 KNOWLEDGE BASE CONTENT:
 {context}
 
-Question: {query}
+🏗️ RESPONSE FRAMEWORK:
+
+1. **OPENING** (Establish Authority):
+   - Acknowledge the question with {detected_leader}'s signature style
+   - Preview the value you'll provide
+   - Use {detected_leader}'s characteristic opening phrases
+
+2. **CORE CONTENT** (Deliver Value):
+   {"- Provide 3+ specific, distinct examples with clear explanations" if is_analytical else "- Give step-by-step actionable guidance" if is_actionable else "- Share comprehensive insights with practical applications"}
+   - Use concrete details from the knowledge base
+   - Include relevant data, statistics, or research findings
+   - Frame everything through {detected_leader}'s unique perspective
+   - Make connections to broader themes or implications
+
+3. **ENGAGEMENT** (Drive Action):
+   - Synthesize key takeaways
+   - Provide actionable next steps or thought-provoking insights
+   - End with {detected_leader}'s motivational style
+   - Include relevant sources for credibility
+
+📝 QUALITY STANDARDS:
+- Every point must be substantiated by the knowledge base content
+- Use specific examples, not generic statements  
+- Maintain {detected_leader}'s authentic voice throughout
+- Ensure practical applicability of insights
+- Include precise details and avoid vague generalizations
 
 {sources_text}
 
-Answer: Please provide your response in {detected_leader}'s communication style and include the source links in markdown format like this: [Document Title](link)."""
+🎤 **Your Response as {detected_leader.upper()}:**"""
     else:
-        prompt = f"""You are responding as {detected_leader}. Use the following tone and communication style:
+        prompt = f"""You are {detected_leader.upper()}, maintaining your authentic voice even when knowledge is limited.
 
+🎯 YOUR VOICE ({detected_leader.upper()}):
 {tone_profile}
 
-I don't have enough relevant information to answer this question accurately.
+❌ **Knowledge Gap Identified**
+The available information doesn't contain sufficient relevant content to properly address this query: "{query}"
 
-Question: {query}
-
-Answer: I apologize, but I don't have enough relevant information to provide a confident answer to your question. Please respond in {detected_leader}'s communication style."""
+🗣️ **Your Response as {detected_leader.upper()}:**
+Acknowledge the limitation authentically in your voice, explain what type of information would be needed, and offer alternative value or next steps that align with your leadership style. Maintain your characteristic tone while being transparent about the knowledge gap."""
     
     response = llm.invoke([HumanMessage(content=prompt)])
     
@@ -418,90 +492,146 @@ def register_response_for_feedback(state: RAGState) -> RAGState:
     
     return state
 
-def elicit_leader(state: RAGState) -> RAGState:
-    """Detect leader specification in the query, defaulting to 'default' if none found."""
+def elicit_leader_and_tone(state: RAGState) -> RAGState:
+    """Unified node: Detect leader, handle user selection if needed, and load tone profile."""
     query = state["query"]
+    messages = state.get("messages", [])
     
-    # Try to detect if a leader is already specified
-    detection_prompt = f"""Analyze the following query and determine if a specific leader's voice is requested.
-    Available leaders: Janelle (strategic business perspective) and Doreen (relational, equity-focused approach).
+    # Check if we're processing a leader selection response from user
+    if len(messages) >= 2:
+        # Look for a leader selection prompt in previous messages
+        for i, msg in enumerate(messages[:-1]):
+            if hasattr(msg, 'content') and "Choose Your Voice" in msg.content:
+                # Found the prompt, now process the user's response
+                last_message = messages[-1]
+                if hasattr(last_message, 'content'):
+                    choice = last_message.content.strip().lower()
+                elif isinstance(last_message, dict):
+                    choice = last_message.get('content', '').strip().lower()
+                else:
+                    choice = str(last_message).strip().lower()
+                
+                # Map user choice to leader name
+                leader_mapping = {"janelle": "janelle", "doreen": "doreen", "default": "default"}
+                detected_leader = leader_mapping.get(choice, "default")
+                
+                # Load tone profile and use original query from state
+                tone_profile = load_tone_profile(detected_leader)
+                original_query = state.get("original_query", query)
+                
+                return {
+                    "detected_leader": detected_leader,
+                    "tone_profile": tone_profile,
+                    "waiting_for_leader": False,
+                    "query": original_query
+                }
     
-    Query: {query}
-    
-    Respond with either:
-    1. "janelle" if Janelle's voice is requested
-    2. "doreen" if Doreen's voice is requested  
-    3. "default" if no specific leader is mentioned
-    
-    Just respond with the leader name or "default"."""
+    # First-time processing: try to detect leader in query
+    detection_prompt = f"""Does this query mention a specific leader name? Look for "Janelle" or "Doreen" anywhere in the text.
+
+Query: {query}
+
+If you see "Janelle" mentioned anywhere, respond with: janelle
+If you see "Doreen" mentioned anywhere, respond with: doreen  
+If neither name appears, respond with: none
+
+Only respond with one word: janelle, doreen, or none"""
     
     detection_response = llm.invoke([HumanMessage(content=detection_prompt)])
     response_content = detection_response.content.strip().lower()
     
-    # Validate response and default to "default" if unclear
-    if response_content not in ["janelle", "doreen"]:
-        response_content = "default"
+    print(f"[DEBUG] Leader detection result: '{response_content}' for query: '{query[:50]}...'")
     
-    return {
-        "detected_leader": response_content,
-        "waiting_for_leader": False
+    # Extract leader name from response (handle various formats)
+    detected_leader = None
+    if "janelle" in response_content:
+        detected_leader = "janelle"
+    elif "doreen" in response_content:
+        detected_leader = "doreen"
+    
+    # If a leader was detected, proceed with that leader
+    if detected_leader:
+        tone_profile = load_tone_profile(detected_leader)
+        print(f"[DEBUG] Leader '{detected_leader}' detected, proceeding with tone profile")
+        return {
+            "detected_leader": detected_leader,
+            "tone_profile": tone_profile,
+            "waiting_for_leader": False
+        }
+    
+    # No leader detected - prompt user to choose (this is the safety net)
+    print(f"[DEBUG] No leader detected (response: '{response_content}'), prompting user for selection")
+    from langchain_core.messages import AIMessage
+    
+    leader_prompt = """
+🎯 **Choose Your Voice**
+
+I can respond in different leadership voices:
+
+**Janelle** - Strategic business perspective with scaling mindset
+**Doreen** - Relational, equity-focused approach  
+**Default** - Professional, research-backed tone
+
+Please reply with: **Janelle**, **Doreen**, or **Default**
+    """.strip()
+    
+    result = {
+        "messages": [AIMessage(content=leader_prompt)],
+        "waiting_for_leader": True,
+        "original_query": query
     }
+    print(f"[DEBUG] Returning state with waiting_for_leader=True: {result.get('waiting_for_leader')}")
+    return result
+
 
 def collect_feedback(state: RAGState) -> RAGState:
-    """Collect feedback from user if appropriate."""
+    """Collect user feedback with rating buttons and optional text input."""
     print("[DEBUG] collect_feedback node called!")
+    
     try:
         import sys
         import os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-        from rag_2_0.feedback.feedback_collector import FeedbackCollector
         from rag_2_0.feedback.feedback_storage import FeedbackStorage
         from langchain_core.messages import AIMessage
         
-        # Initialize feedback system
         storage = FeedbackStorage()
-        collector = FeedbackCollector(storage)
-        
         response_id = state.get("response_id", "")
         
-        # Check if we should prompt for feedback - temporarily always prompt for testing
-        print(f"[DEBUG] Checking feedback for response_id: {response_id}")
-        should_prompt = collector.should_prompt_feedback(response_id) if response_id else False
-        print(f"[DEBUG] Should prompt feedback: {should_prompt}")
-        
-        # Temporarily force feedback prompt for testing
-        if response_id:  # Always prompt if we have a response_id
-            # Create feedback prompt message
+        # Simple feedback collection - just prompt once and that's it
+        if response_id:
             feedback_prompt = """
-📝 **Feedback Request**
+📝 **Rate this response:**
 
-How would you rate this response? Please reply with:
+Please rate from 1-5:
+• **1** = Very Poor  
+• **2** = Poor  
+• **3** = Okay  
+• **4** = Good  
+• **5** = Excellent
 
-**Rating (1-5):** [1=Very Poor, 2=Poor, 3=Okay, 4=Good, 5=Excellent]
-**Optional:** Any specific feedback or suggestions?
+*Optional: Add any specific feedback or suggestions*
 
-Example response: "4 - Good response but could use more specific examples"
+(Note: In LangGraph Studio, feedback processing would be handled by a separate UI component)
             """.strip()
             
-            # Add feedback prompt as a message
             feedback_message = AIMessage(content=feedback_prompt)
             current_messages = state.get("messages", [])
             
+            print(f"[DEBUG] Prompting for feedback for response_id: {response_id}")
+            
             return {
                 "messages": current_messages + [feedback_message],
-                "waiting_for_feedback": True,
-                "response_id": response_id
+                "feedback_collected": True
             }
         
-        # No feedback needed, just return current state
-        return {"waiting_for_feedback": False}
+        # No response ID - skip feedback
+        print("[DEBUG] No response_id found, skipping feedback")
+        return state
         
-    except ImportError:
-        print("[DEBUG] Feedback system not available")
-        return {"waiting_for_feedback": False}
     except Exception as e:
         print(f"[DEBUG] Error in collect_feedback: {e}")
-        return {"waiting_for_feedback": False}
+        return state
 
 def create_rag_graph():
     """Create the RAG workflow graph."""
@@ -512,8 +642,7 @@ def create_rag_graph():
     # Add nodes
     workflow.add_node("extract_query", extract_query)
     workflow.add_node("detect_social_media", detect_social_media_request)
-    workflow.add_node("elicit_leader", elicit_leader)
-    workflow.add_node("detect_tone", detect_tone_and_leader)
+    workflow.add_node("elicit_leader_and_tone", elicit_leader_and_tone)
     workflow.add_node("retrieve", retrieve_documents)
     workflow.add_node("grade_documents", grade_documents)
     workflow.add_node("generate", generate_response)
@@ -524,18 +653,24 @@ def create_rag_graph():
     # Define workflow
     workflow.set_entry_point("extract_query")
     
-    # Main pipeline: all requests go through full RAG treatment
+    # Simple linear pipeline
     workflow.add_edge("extract_query", "detect_social_media")
-    workflow.add_edge("detect_social_media", "elicit_leader")
+    workflow.add_edge("detect_social_media", "elicit_leader_and_tone")
     
-    # After elicit_leader, always proceed to detect_tone
-    workflow.add_edge("elicit_leader", "detect_tone")
+    # After elicit_leader_and_tone, check if we need to wait for user input
+    workflow.add_conditional_edges(
+        "elicit_leader_and_tone",
+        lambda x: "END" if x.get("waiting_for_leader", False) else "retrieve",
+        {
+            "END": END,
+            "retrieve": "retrieve"
+        }
+    )
     
-    # Full RAG pipeline for both paths
-    workflow.add_edge("detect_tone", "retrieve")
+    # Full RAG pipeline
     workflow.add_edge("retrieve", "grade_documents")
     
-    # Branch at the end based on social media flag
+    # Branch based on social media flag
     workflow.add_conditional_edges(
         "grade_documents",
         lambda x: "generate_social_media" if x.get("is_social_media", False) else "generate",
@@ -552,7 +687,7 @@ def create_rag_graph():
     # After registering, collect feedback
     workflow.add_edge("register_feedback", "collect_feedback")
     
-    # End
+    # End after feedback collection
     workflow.add_edge("collect_feedback", END)
     
     return workflow.compile()

@@ -1,6 +1,124 @@
 # Wells RAG 2.0 - Change Log
 
-## Recent Updates (June 14, 2025)
+## Latest Updates (June 17, 2025)
+
+### 🎯 **Enhanced Leader Elicitation & Workflow Optimization**
+
+#### **Streamlined Workflow Architecture**
+- **Consolidated Leader Processing**: Combined `elicit_leader`, `process_leader_selection`, and `detect_tone_and_leader` into single efficient `elicit_leader_and_tone` node
+- **Eliminated Disconnected Paths**: Removed orphaned nodes and simplified workflow routing
+- **Fixed Feedback Loop Issues**: Resolved endless looping when users provide feedback responses
+- **Linear Workflow**: Clean pipeline from query → social media detection → leader elicitation → retrieval → generation → feedback
+
+#### **Robust Leader Detection System**
+- **Improved Detection Logic**: Enhanced pattern recognition for "in Janelle's voice", "as Doreen", etc.
+- **Simplified Detection Prompt**: More reliable leader identification with fallback handling
+- **Interactive Safety Net**: Prompts users to choose leader when none specified
+- **Context Preservation**: Maintains original query context through leader selection process
+
+#### **Advanced Prompting System Overhaul**
+
+**1. Social Media Generation**
+- **Dynamic Platform Optimization**: Adapts content length and style for LinkedIn vs X/Twitter
+- **Natural Conversation Flow**: Eliminates academic formatting and corporate jargon
+- **Voice-Authentic Content**: Maintains leader personality while being engaging
+- **Clean Formatting**: Removes asterisks, numbered lists, and weird characters
+- **Knowledge-First Approach**: Leads with valuable insights, ends with single engagement question
+
+**2. Enhanced Document Grading**
+- **Multi-Criteria Evaluation**: Assesses direct relevance, conceptual alignment, actionable content
+- **Step-by-Step Analysis**: Structured decision framework with clear criteria
+- **Improved Accuracy**: More precise relevance scoring for better content retrieval
+
+**3. Intelligent Response Generation**
+- **Query Type Analysis**: Automatically detects analytical vs actionable vs informational queries
+- **Structured Response Framework**: Opening → Core Content → Engagement with quality standards
+- **Voice Calibration**: Specific language patterns for each leader persona
+- **Knowledge Gap Handling**: Authentic voice maintenance even when information is limited
+
+#### **KPI Monitoring & Analytics System**
+
+**New Comprehensive KPI Tracking (`src/rag_2_0/feedback/kpi_monitor.py`)**
+- **Weekly & Total Averages**: Tracks satisfaction ratings across 4-week pilot periods
+- **Success/Failure Rate Monitoring**: Quantitative metrics with configurable thresholds
+- **Trend Analysis**: Improvement/decline tracking with percentage calculations
+- **Performance Grading**: A-F grading system based on satisfaction and success rates
+- **Alert System**: Automated alerts for critical performance issues
+
+**KPI Dashboard CLI (`scripts/kpi_dashboard.py`)**
+- **Real-time Metrics**: Current KPIs, weekly breakdown, pilot summaries
+- **Persona Performance Analysis**: Compare effectiveness across different leader voices
+- **Automated Reporting**: Generate comprehensive markdown reports
+- **Command Line Interface**: Multiple viewing modes (summary, alerts, full dashboard)
+
+**Key Metrics Tracked**:
+- Total responses and feedback collection rates
+- Average satisfaction scores (1-5 scale)
+- Success rates (4+ ratings) and failure rates (2 or below)
+- Weekly trends and improvement rates
+- Performance by persona (Janelle, Doreen, Default)
+- System alerts for performance issues
+
+#### **Technical Improvements**
+
+**Workflow Fixes**:
+- **Leader Elicitation**: Now properly detects leader requests and prompts when needed
+- **Feedback Processing**: Fixed endless loops when users provide ratings
+- **State Management**: Improved message handling and context preservation
+- **Error Handling**: Better debugging and logging throughout the pipeline
+
+**Performance Optimizations**:
+- **Reduced Node Count**: Consolidated redundant processing steps
+- **Improved Efficiency**: Streamlined conditional logic and edge routing
+- **Debug Logging**: Enhanced visibility into workflow execution
+- **Memory Usage**: Optimized state passing between nodes
+
+### 📊 **Usage Examples**
+
+#### **KPI Dashboard**
+```bash
+# View current KPIs and weekly breakdown
+python scripts/kpi_dashboard.py
+
+# View only alerts
+python scripts/kpi_dashboard.py --alerts-only
+
+# View pilot summary
+python scripts/kpi_dashboard.py --summary-only --weeks 4
+
+# Generate full report
+python scripts/kpi_dashboard.py --report
+```
+
+#### **Leader Detection Testing**
+```bash
+# Test explicit leader mention
+"Create a social media post about leadership in Janelle's voice"
+# → Detects Janelle, proceeds directly
+
+# Test no leader specified  
+"What are examples of invisible work?"
+# → Prompts for leader selection (Janelle/Doreen/Default)
+```
+
+### 🎯 **Quality Improvements**
+
+#### **Social Media Content Quality**
+- **Conversational Tone**: Natural, engaging content that sounds human
+- **Strategic Insights**: Uses specific examples from knowledge base
+- **Professional Authority**: Balances intelligence with relatability
+- **Clean Formatting**: No weird characters, asterisks, or academic structure
+- **Single Engagement Hook**: One compelling question instead of survey-style multiple questions
+
+#### **System Reliability**
+- **No More Loops**: Fixed infinite feedback loops and workflow issues
+- **Consistent Leader Detection**: Reliable identification of voice requests
+- **Robust Error Handling**: Graceful fallbacks for edge cases
+- **Debug Visibility**: Clear logging for troubleshooting
+
+---
+
+## Previous Updates (June 14, 2025)
 
 ### 🔄 Feedback Loop System Implementation
 
