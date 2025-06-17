@@ -5,7 +5,7 @@ Document ingestion script using LangChain integrations.
 import os
 from pathlib import Path
 from typing import List, Dict, Any
-
+import hashlib
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -53,9 +53,18 @@ class DocumentIngester:
         return filtered_metadata
     
     def load_documents(self) -> List[Document]:
-        """Load documents from Google Drive folder."""
+        """Load documents from Google Drive folders with deduplication."""
         documents = []
-        folder_id = "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH"
+        seen_hashes = set()
+        duplicate_count = 0
+        
+        # List of folder IDs to process
+        FOLDER_IDS = [
+            "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH", 
+            "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ", 
+            "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT", 
+            "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8"
+        ]
         
         # Get credentials and token paths from environment variables
         credentials_path = os.getenv("GOOGLE_CREDENTIALS_PATH")
@@ -81,35 +90,54 @@ class DocumentIngester:
                 "Please ensure the path is correct and the file exists."
             )
 
-        print(f"Loading documents from Google Drive folder: {folder_id}")
-        print(f"Using credentials: {credentials_path}")
-        print(f"Using token: {token_path}")
+        def get_document_hash(doc):
+            """Create a hash of the document content and metadata for deduplication."""
+            content = doc.page_content
+            metadata = doc.metadata
+            file_info = f"{metadata.get('name', '')}{metadata.get('size', '')}"
+            return hashlib.md5((content + file_info).encode()).hexdigest()
 
-        try:
-            loader = GoogleDriveLoader(
-                folder_id=folder_id,
-                credentials_path=credentials_path,
-                token_path=token_path,
-                recursive=False,
-                num_results=1,
-                load_extended_metadata=True,  # Enable extended metadata
-                load_auth=True  # Enable auth information
-            )
-            docs = loader.load()
-            print(f"Loaded {len(docs)} documents from Google Drive.")
-            
-            # Filter metadata and log for each document
-            for i, doc in enumerate(docs):
-                doc.metadata = self._filter_metadata(doc.metadata)
-                print(f"\nDocument {i+1} Metadata:")
-                for key, value in doc.metadata.items():
-                    print(f"  {key}: {value}")
-            
-            documents.extend(docs)
-        except Exception as e:
-            print(f"Error loading documents from Google Drive: {e}")
-            raise
+        for folder_id in FOLDER_IDS:
+            print(f"\nProcessing folder: {folder_id}")
+            print(f"Using credentials: {credentials_path}")
+            print(f"Using token: {token_path}")
 
+            try:
+                loader = GoogleDriveLoader(
+                    folder_id=folder_id,
+                    credentials_path=credentials_path,
+                    token_path=token_path,
+                    recursive=True,  # Include subfolders
+                    load_extended_metadata=True,
+                    load_auth=True
+                )
+                docs = loader.load()
+                print(f"Loaded {len(docs)} documents from folder {folder_id}")
+                
+                # Process each document and check for duplicates
+                for doc in docs:
+                    doc.metadata = self._filter_metadata(doc.metadata)
+                    doc_hash = get_document_hash(doc)
+                    
+                    if doc_hash not in seen_hashes:
+                        seen_hashes.add(doc_hash)
+                        documents.append(doc)
+                        print(f"\nAdded unique document: {doc.metadata.get('name', 'Unknown')}")
+                        print("Document Metadata:")
+                        for key, value in doc.metadata.items():
+                            print(f"  {key}: {value}")
+                    else:
+                        duplicate_count += 1
+                        print(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')}")
+                
+            except Exception as e:
+                print(f"Error loading documents from folder {folder_id}: {e}")
+                continue  # Continue with next folder even if one fails
+
+        print(f"\nDocument Loading Summary:")
+        print(f"Total unique documents loaded: {len(documents)}")
+        print(f"Total duplicates skipped: {duplicate_count}")
+        
         return documents
     
     def chunk_documents(self, documents: List[Document]) -> List[Document]:
