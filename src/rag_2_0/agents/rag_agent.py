@@ -247,8 +247,12 @@ def grade_documents(state: RAGState) -> RAGState:
     return {"grade": grade}
 
 def extract_query(state: RAGState) -> RAGState:
-    """Extract query from messages."""
+    """Extract query from messages and reset state for new conversations."""
     messages = state.get("messages", [])
+    
+    # Check if this is a new conversation (only one message, which should be the user's query)
+    is_new_conversation = len(messages) == 1
+    
     if messages:
         last_message = messages[-1]
         # Handle both dict and LangChain message formats
@@ -261,7 +265,23 @@ def extract_query(state: RAGState) -> RAGState:
     else:
         query = "What is machine learning?"
     
-    return {"query": query}
+    # For new conversations, reset all state variables
+    if is_new_conversation:
+        print(f"[DEBUG] New conversation detected, resetting state for query: '{query[:50]}...'")
+        return {
+            "query": query,
+            "waiting_for_leader": False,
+            "original_query": "",
+            "detected_leader": "",
+            "tone_profile": "",
+            "is_social_media": False,
+            "grade": "yes",
+            "feedback_collected": False,
+            "waiting_for_feedback": False
+        }
+    else:
+        print(f"[DEBUG] Continuing conversation with query: '{query[:50]}...'")
+        return {"query": query}
 
 def retrieve_documents(state: RAGState) -> RAGState:
     """Retrieve relevant documents with feedback-enhanced scoring."""
@@ -497,9 +517,12 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
     """Unified node: Detect leader, handle user selection if needed, and load tone profile."""
     query = state["query"]
     messages = state.get("messages", [])
+    waiting_for_leader = state.get("waiting_for_leader", False)
     
-    # Check if we're processing a leader selection response from user
-    if len(messages) >= 2:
+    print(f"[DEBUG] elicit_leader_and_tone called with {len(messages)} messages, waiting_for_leader={waiting_for_leader}")
+    
+    # If we're already waiting for leader input, process the user's response
+    if waiting_for_leader and len(messages) >= 2:
         # Look for a leader selection prompt in previous messages
         for i, msg in enumerate(messages[:-1]):
             if hasattr(msg, 'content') and "Choose Your Voice" in msg.content:
@@ -512,6 +535,8 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
                 else:
                     choice = str(last_message).strip().lower()
                 
+                print(f"[DEBUG] Processing leader choice: '{choice}'")
+                
                 # Map user choice to leader name
                 leader_mapping = {"janelle": "janelle", "doreen": "doreen", "default": "default"}
                 detected_leader = leader_mapping.get(choice, "default")
@@ -519,6 +544,8 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
                 # Load tone profile and use original query from state
                 tone_profile = load_tone_profile(detected_leader)
                 original_query = state.get("original_query", query)
+                
+                print(f"[DEBUG] Leader selected: {detected_leader}, proceeding with original query: '{original_query[:50]}...'")
                 
                 return {
                     "detected_leader": detected_leader,
@@ -528,6 +555,7 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
                 }
     
     # First-time processing: try to detect leader in query
+    print(f"[DEBUG] First-time processing, detecting leader in query: '{query[:50]}...'")
     detection_prompt = f"""Does this query mention a specific leader name? Look for "Janelle" or "Doreen" anywhere in the text.
 
 Query: {query}
