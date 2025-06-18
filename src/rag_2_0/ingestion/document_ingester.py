@@ -13,7 +13,6 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 from langchain_google_community import GoogleDriveLoader
-from langchain_community.vectorstores.utils import filter_complex_metadata
 import asyncio
 
 load_dotenv()
@@ -59,8 +58,15 @@ class DocumentIngester:
 
     def _filter_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Filter metadata to only include simple types and ensure source URL is preserved."""
-        # First filter out complex types
-        filtered_metadata = filter_complex_metadata(metadata)
+        # Filter out complex types manually
+        filtered_metadata = {}
+        for key, value in metadata.items():
+            # Only keep simple types that can be serialized
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                filtered_metadata[key] = value
+            else:
+                # Convert complex types to string representation
+                filtered_metadata[key] = str(value)
         
         # Ensure we keep the source URL if it exists
         if 'source' in metadata:
@@ -90,6 +96,11 @@ class DocumentIngester:
             raise ValueError("GOOGLE_TOKEN_PATH environment variable is not set.")
         if not os.path.exists(credentials_path):
             raise FileNotFoundError(f"Credentials file not found at: {credentials_path}.")
+
+        print(f"GOOGLE_CREDENTIALS_PATH: {credentials_path}")
+        print(f"GOOGLE_TOKEN_PATH: {token_path}")
+        print(f"Credentials file exists: {os.path.exists(credentials_path)}")
+        print(f"Token file exists: {os.path.exists(token_path)}")
 
         async def gather_all_folders():
             tasks = [
