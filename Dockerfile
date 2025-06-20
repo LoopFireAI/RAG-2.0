@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -e .
 # Copy source code
 COPY src/ ./src/
 COPY langgraph.json ./
-COPY .env ./
+# NOTE: .env file removed for security - use environment variables at runtime
 
 # Create directories for persistent data
 RUN mkdir -p /app/chroma_db /app/credentials

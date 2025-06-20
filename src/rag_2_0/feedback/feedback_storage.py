@@ -5,16 +5,19 @@ Avoids expensive LLM calls for basic feedback operations.
 import json
 import sqlite3
 import uuid
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import hashlib
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 class FeedbackStorage:
     def __init__(self, db_path: str = "feedback.db"):
         self.db_path = Path(db_path)
         self.init_database()
-    
+
     def init_database(self):
         """Initialize SQLite database with feedback tables."""
         with sqlite3.connect(self.db_path) as conn:
@@ -33,7 +36,7 @@ class FeedbackStorage:
                     response_time_ms INTEGER
                 )
             """)
-            
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS responses (
                     response_id TEXT PRIMARY KEY,
@@ -45,7 +48,7 @@ class FeedbackStorage:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS document_feedback (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +59,7 @@ class FeedbackStorage:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS query_patterns (
                     query_hash TEXT PRIMARY KEY,
@@ -66,7 +69,7 @@ class FeedbackStorage:
                     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             conn.execute("CREATE INDEX IF NOT EXISTS idx_query_hash ON feedback(query_hash)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_doc_id ON document_feedback(doc_id)")
 
@@ -74,7 +77,7 @@ class FeedbackStorage:
         """Store feedback with minimal processing to reduce costs."""
         feedback_id = str(uuid.uuid4())
         query_hash = self._hash_query(feedback_data.get('query', ''))
-        
+
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO feedback (
@@ -93,7 +96,7 @@ class FeedbackStorage:
                 feedback_data.get('persona', 'default'),
                 feedback_data.get('response_time_ms', 0)
             ))
-            
+
             # Store individual document feedback
             for doc in feedback_data.get('retrieved_docs', []):
                 conn.execute("""
@@ -105,15 +108,15 @@ class FeedbackStorage:
                     query_hash,
                     feedback_data.get('relevance_score', 3)
                 ))
-            
+
             # Update query patterns for fast lookup
-            self._update_query_patterns(conn, query_hash, feedback_data.get('query', ''), 
+            self._update_query_patterns(conn, query_hash, feedback_data.get('query', ''),
                                       feedback_data.get('satisfaction_score'))
-        
+
         return feedback_id
 
-    def store_response(self, response_id: str, query: str, response_content: str, 
-                      retrieved_docs: List[Dict], persona: str = "default", 
+    def store_response(self, response_id: str, query: str, response_content: str,
+                      retrieved_docs: List[Dict], persona: str = "default",
                       response_time_ms: int = 0) -> bool:
         """Store response data for later feedback collection."""
         try:
@@ -133,7 +136,7 @@ class FeedbackStorage:
                 ))
             return True
         except Exception as e:
-            print(f"[DEBUG] Error storing response: {e}")
+            logger.error(f"Error storing response: {e}")
             return False
 
     def get_response(self, response_id: str) -> Optional[Dict[str, Any]]:
@@ -144,7 +147,7 @@ class FeedbackStorage:
                     SELECT query, response_content, retrieved_docs, persona, response_time_ms
                     FROM responses WHERE response_id = ?
                 """, (response_id,))
-                
+
                 result = cursor.fetchone()
                 if result:
                     return {
@@ -156,14 +159,14 @@ class FeedbackStorage:
                     }
                 return None
         except Exception as e:
-            print(f"[DEBUG] Error retrieving response: {e}")
+            logger.error(f"Error retrieving response: {e}")
             return None
 
     def get_document_feedback_scores(self, doc_ids: List[str]) -> Dict[str, float]:
         """Get average relevance scores for documents - used for retrieval weighting."""
         if not doc_ids:
             return {}
-        
+
         placeholders = ','.join(['?' for _ in doc_ids])
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(f"""
@@ -173,19 +176,19 @@ class FeedbackStorage:
                 GROUP BY doc_id
                 HAVING count >= 2
             """, doc_ids)
-            
+
             return {row[0]: row[1] for row in cursor.fetchall()}
 
     def get_query_pattern_score(self, query: str) -> Optional[float]:
         """Get average satisfaction for similar queries - fast local lookup."""
         query_hash = self._hash_query(query)
-        
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT avg_satisfaction FROM query_patterns 
                 WHERE query_hash = ? AND feedback_count >= 3
             """, (query_hash,))
-            
+
             result = cursor.fetchone()
             return result[0] if result else None
 
@@ -201,7 +204,7 @@ class FeedbackStorage:
                 FROM feedback 
                 WHERE satisfaction_score IS NOT NULL
             """)
-            
+
             stats = cursor.fetchone()
             return {
                 'total_feedback': stats[0],
@@ -220,7 +223,7 @@ class FeedbackStorage:
                 HAVING feedback_count >= 3 AND avg_score < ?
                 ORDER BY avg_score ASC
             """, (threshold,))
-            
+
             return [
                 {
                     'doc_id': row[0],
@@ -240,7 +243,7 @@ class FeedbackStorage:
         """Update query pattern statistics."""
         if satisfaction_score is None:
             return
-            
+
         conn.execute("""
             INSERT INTO query_patterns (query_hash, query_normalized, avg_satisfaction, feedback_count)
             VALUES (?, ?, ?, 1)
@@ -259,7 +262,7 @@ class FeedbackStorage:
                 WHERE timestamp >= datetime('now', '-{} days')
                 AND (satisfaction_score <= 2 OR feedback_text IS NOT NULL)
             """.format(days))
-            
+
             return [
                 {
                     'query': row[0],

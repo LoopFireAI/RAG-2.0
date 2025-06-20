@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 import hashlib
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+import logging
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
@@ -17,31 +17,34 @@ import asyncio
 
 load_dotenv()
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 class DocumentIngester:
     def __init__(self, data_dir: str = "./data", collection_name: str = "rag_docs"):
         self.data_dir = Path(data_dir)
         self.collection_name = collection_name
         self.hash_file = os.getenv("HASH_FILE", "ingested_hashes.txt")
-        
+
         # Initialize embeddings
         self.embeddings = OpenAIEmbeddings(
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
-        
+
         # Initialize text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=int(os.getenv("CHUNK_SIZE", 1000)),
             chunk_overlap=int(os.getenv("CHUNK_OVERLAP", 200)),
             length_function=len,
         )
-        
+
         # Initialize vector store
         self.vector_store = Chroma(
             collection_name=self.collection_name,
             embedding_function=self.embeddings,
             persist_directory="./chroma_db"
         )
-    
+
     async def load_folder_async(self, folder_id, credentials_path, token_path):
         loader = GoogleDriveLoader(
             folder_id=folder_id,
@@ -67,13 +70,13 @@ class DocumentIngester:
             else:
                 # Convert complex types to string representation
                 filtered_metadata[key] = str(value)
-        
+
         # Ensure we keep the source URL if it exists
         if 'source' in metadata:
             filtered_metadata['source'] = metadata['source']
-        
+
         return filtered_metadata
-    
+
     def load_documents(self) -> List[Document]:
         """Load documents from Google Drive folders with deduplication, using async parallel loading."""
         documents = []
@@ -81,9 +84,9 @@ class DocumentIngester:
         duplicate_count = 0
 
         FOLDER_IDS = [
-            "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH", 
-            "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ", 
-            "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT", 
+            "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH",
+            "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ",
+            "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT",
             "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8"
         ]
 
@@ -97,10 +100,10 @@ class DocumentIngester:
         if not os.path.exists(credentials_path):
             raise FileNotFoundError(f"Credentials file not found at: {credentials_path}.")
 
-        print(f"GOOGLE_CREDENTIALS_PATH: {credentials_path}")
-        print(f"GOOGLE_TOKEN_PATH: {token_path}")
-        print(f"Credentials file exists: {os.path.exists(credentials_path)}")
-        print(f"Token file exists: {os.path.exists(token_path)}")
+        logger.debug(f"GOOGLE_CREDENTIALS_PATH: {credentials_path}")
+        logger.debug(f"GOOGLE_TOKEN_PATH: {token_path}")
+        logger.debug(f"Credentials file exists: {os.path.exists(credentials_path)}")
+        logger.debug(f"Token file exists: {os.path.exists(token_path)}")
 
         async def gather_all_folders():
             tasks = [
@@ -125,83 +128,83 @@ class DocumentIngester:
             if doc_hash not in seen_hashes:
                 seen_hashes.add(doc_hash)
                 documents.append(doc)
-                print(f"\nAdded unique document: {doc.metadata.get('name', 'Unknown')}")
-                print("Document Metadata:")
+                logger.info(f"Added unique document: {doc.metadata.get('name', 'Unknown')}")
+                logger.debug("Document Metadata:")
                 for key, value in doc.metadata.items():
-                    print(f"  {key}: {value}")
+                    logger.debug(f"  {key}: {value}")
             else:
                 duplicate_count += 1
-                print(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')}")
+                logger.debug(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')}")
 
-        print(f"\nDocument Loading Summary:")
-        print(f"Total unique documents loaded: {len(documents)}")
-        print(f"Total duplicates skipped: {duplicate_count}")
+        logger.info("Document Loading Summary:")
+        logger.info(f"Total unique documents loaded: {len(documents)}")
+        logger.info(f"Total duplicates skipped: {duplicate_count}")
 
         self.save_hashes(seen_hashes)
         return documents
-    
+
     def chunk_documents(self, documents: List[Document]) -> List[Document]:
         """Split documents into chunks."""
         if not documents:
             return []
-        
+
         chunks = self.text_splitter.split_documents(documents)
-        print(f"Split {len(documents)} documents into {len(chunks)} chunks")
-        
+        logger.info(f"Split {len(documents)} documents into {len(chunks)} chunks")
+
         # Filter metadata for each chunk
         for chunk in chunks:
             chunk.metadata = self._filter_metadata(chunk.metadata)
-        
+
         # Log metadata for first chunk of each document
         for i, chunk in enumerate(chunks):
             if i % 10 == 0:  # Log every 10th chunk to avoid too much output
-                print(f"\nChunk {i+1} Metadata:")
+                logger.debug(f"Chunk {i+1} Metadata:")
                 for key, value in chunk.metadata.items():
-                    print(f"  {key}: {value}")
-        
+                    logger.debug(f"  {key}: {value}")
+
         return chunks
-    
+
     def ingest_documents(self):
         """Main ingestion process."""
-        print("Starting document ingestion...")
-        
+        logger.info("Starting document ingestion...")
+
         try:
             # Load documents
             documents = self.load_documents()
             if not documents:
-                print("No documents to process.")
+                logger.warning("No documents to process.")
                 return
-            
+
             # Chunk documents
             chunks = self.chunk_documents(documents)
             if not chunks:
-                print("No chunks created.")
+                logger.warning("No chunks created.")
                 return
-            
+
             # Clear existing collection
             # try:
             #     # self.vector_store.delete_collection()
             #     # print("Cleared existing collection")
             # except:
             #     pass
-            
+
             # Reinitialize vector store
             self.vector_store = Chroma(
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
                 persist_directory="./chroma_db"
             )
-            
+
             # Add chunks to vector store
-            print(f"Adding {len(chunks)} chunks to vector store...")
+            logger.info(f"Adding {len(chunks)} chunks to vector store...")
             self.vector_store.add_documents(chunks)
-            print("Document ingestion completed!")
-            
+            logger.info("Document ingestion completed!")
+
             # Print some stats
             collection = self.vector_store._collection
-            print(f"Total documents in collection: {collection.count()}")
+            logger.info(f"Total documents in collection: {collection.count()}")
         except Exception as e:
-            print(f"Error during document ingestion: {e}")
+            logger.error(f"Error during document ingestion: {e}")
             raise
 
     def load_hashes(self):

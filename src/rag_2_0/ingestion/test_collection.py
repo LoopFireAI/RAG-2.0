@@ -3,7 +3,6 @@ Super simple way to view your Chroma collection
 """
 
 import chromadb
-from chromadb.config import Settings
 
 # Connect to your existing collection
 client = chromadb.PersistentClient(path="./chroma_db")
