@@ -31,6 +31,8 @@ dependencies = [
     "google-auth-oauthlib>=1.2.2",
     "langchain-google-community[drive]>=2.0.7",
     "pycryptodome>=3.23.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
 ]
 
 [project.urls]
@@ -39,7 +41,7 @@ Repository = "https://github.com/LoopFireAI/RAG-2.0"
 Issues = "https://github.com/LoopFireAI/RAG-2.0/issues"
 
 [project.scripts]
-rag = "scripts.main:main"
+rag = "cli.main:main"
 ingest = "src.rag_2_0.ingestion.document_ingester:main"
 
 [build-system]

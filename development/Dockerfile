@@ -29,8 +29,8 @@ ENV PYTHONUNBUFFERED=1
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import sys; sys.path.insert(0, '/app'); from src.rag_2_0.agents.rag_agent import vector_store; print('healthy')" || exit 1
 
-# Expose port for LangGraph Studio
+# Expose port for LangGraph Studio (development)
 EXPOSE 8123
 
-# Run the application
+# Run LangGraph Studio for development
 CMD ["python", "-m", "langgraph", "up", "--config", "langgraph.json", "--host", "0.0.0.0", "--port", "8123"]

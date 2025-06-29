@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  rag-dev:
+    build:
+      context: ..
+      dockerfile: development/Dockerfile
+    ports:
+      - "8123:8123"  # LangGraph Studio
+    volumes:
+      # Mount local directories for development
+      - ./chroma_db:/app/chroma_db
+      - ./src:/app/src
+      - ./feedback.db:/app/feedback.db
+    environment:
+      - ENVIRONMENT=development
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s 
