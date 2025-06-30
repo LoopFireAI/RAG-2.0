@@ -71,7 +71,6 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-chroma_db/
 *.log
 .langgraph_api/
 
