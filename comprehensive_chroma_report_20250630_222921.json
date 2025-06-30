@@ -1,0 +1,153 @@
+{
+  "analysis_timestamp": "2025-06-30T22:29:21.709226",
+  "summary": {
+    "total_embeddings": 4921,
+    "unique_source_documents": 47,
+    "total_pdf_files": 1,
+    "total_pdf_chunks": 335,
+    "database_operational": true
+  },
+  "file_type_analysis": {
+    "distribution": {
+      "pdf": 335
+    },
+    "total_types": 1
+  },
+  "pdf_verification": {
+    "pdfs_found": true,
+    "unique_pdf_files": 1,
+    "pdf_chunks": 335,
+    "pdf_files": [
+      "8.2.24.Our.(In)visible.Work.FINAL.pdf"
+    ],
+    "average_chunks_per_pdf": 335.0
+  },
+  "metadata_fields": [
+    {
+      "field": "source",
+      "count": 4921
+    },
+    {
+      "field": "chroma:document",
+      "count": 4921
+    },
+    {
+      "field": "page",
+      "count": 4772
+    },
+    {
+      "field": "title",
+      "count": 4586
+    },
+    {
+      "field": "size",
+      "count": 4586
+    },
+    {
+      "field": "owner",
+      "count": 4586
+    },
+    {
+      "field": "full_path",
+      "count": 4586
+    },
+    {
+      "field": "authorized_identities",
+      "count": 4586
+    },
+    {
+      "field": "total_pages",
+      "count": 335
+    },
+    {
+      "field": "source_file",
+      "count": 335
+    },
+    {
+      "field": "producer",
+      "count": 335
+    },
+    {
+      "field": "page_label",
+      "count": 335
+    },
+    {
+      "field": "moddate",
+      "count": 335
+    },
+    {
+      "field": "file_type",
+      "count": 335
+    },
+    {
+      "field": "creator",
+      "count": 335
+    },
+    {
+      "field": "creationdate",
+      "count": 335
+    },
+    {
+      "field": "author",
+      "count": 335
+    },
+    {
+      "field": "when",
+      "count": 149
+    }
+  ],
+  "ingestion_verification": {
+    "all_documents_embedded": true,
+    "documents_chunked": true,
+    "ready_for_queries": true
+  },
+  "source_documents": [
+    "https://drive.google.com/file/d/1OhF_3_uY-hWPYcC8r3MZDiIHYwmsiICh/view",
+    "https://drive.google.com/file/d/1O7AMIqWVcNJOR6K1MfC3A7DzgO8NbzWT/view",
+    "https://drive.google.com/file/d/1XP-Tlo7GorfTlQNm5Pz4awcdIe-ljodR/view",
+    "https://drive.google.com/file/d/1amCtjELn97tCqImOjObKKznh-nKhUkMh/view",
+    "https://drive.google.com/file/d/1DagdMKcx3BuXVyb085yZpgHdLZlASSq6/view",
+    "https://drive.google.com/file/d/1p-E9ZefGs6EyHk1IP9E_9OwGbQgRtlNG/view",
+    "https://drive.google.com/file/d/1vhrkI1IycaFj-v3w6Xvp5-IeHpO36PQP/view",
+    "https://drive.google.com/file/d/1Nl4BR3WfZWOnwdBmiQg6WqkSvPDaMSD4/view",
+    "https://drive.google.com/file/d/1SWMEF2tQvm8RM4WYfCTG1Q5TmyPViExW/view",
+    "https://drive.google.com/file/d/1CMEJNPyDfSycoFXZGdPFktIulPy-ZV2f/view",
+    "https://drive.google.com/file/d/1HWslYoz5OGaRB6HQm4N3Xa69FLnlh2WC/view",
+    "https://drive.google.com/file/d/18z7GyNmZFaLlWiOZ_rfaK8FIPs3xMQ4C/view",
+    "https://drive.google.com/file/d/1wciREjDICfGpFrlYN6KDWqfU3n6fWetu/view",
+    "https://drive.google.com/file/d/1k_aORclYqvnNIcqDDQ08iBsk5-GUOqVO/view",
+    "https://drive.google.com/file/d/1aHKkBIFFzz2bVFzXtuiWUofV6qr4ADrD/view",
+    "https://drive.google.com/file/d/1w98XYnEtcMbwMggPAPQyY1aQ7A_79ZCT/view",
+    "https://drive.google.com/file/d/1SKGtXnjOtfwzOF3IyoZcpO6uno4xyyQS/view",
+    "https://drive.google.com/file/d/1BtNyT03DVox3MxWbNKOfVKVf3rbfpqUf/view",
+    "https://drive.google.com/file/d/1V1VqpSV792BiUkwzeGdE3F7DXLW4LPos/view",
+    "https://drive.google.com/file/d/15JqJlli6UVWWFgRPrL-o3m3VrwwfCZVn/view",
+    "https://drive.google.com/file/d/1bQvc4R0ai336t1cxCaGBmiSs1Kvmzxe1/view",
+    "https://drive.google.com/file/d/1q18q30AjDxm1PLsQuOaYV42_lF4eC3DL/view",
+    "https://drive.google.com/file/d/1k-AqleQdCyEBbohYqhWjcXTVI8wFeQb_/view",
+    "https://drive.google.com/file/d/1L_9J2wJjmIRGKE0_w3NFWHBZZOoCNORa/view",
+    "https://drive.google.com/file/d/1-XoU1Y2t0NfuivzWIUImbFFj12P537hu/view",
+    "https://drive.google.com/file/d/1irHZ-senQP-u9InOiDiARtUzM35rPByx/view",
+    "https://drive.google.com/file/d/1a6Q6ZzqxTwWbqYEJ7riwsqoLg1Sy245G/view",
+    "https://drive.google.com/file/d/1ZplJuBQm8AD2CJGw_f2dqXAoD50uzy8i/view",
+    "https://docs.google.com/document/d/1jUO0XrmoVZc474SeUPxalCTBnelJI1sogJlJRWFHaqo/edit?usp=drivesdk",
+    "https://drive.google.com/file/d/1EPOMCpOb5z79s9k-hWx-qQX08l_2JKag/view",
+    "https://drive.google.com/file/d/1etXTzJNbgjKfeB_G5wrvADV73d0eMgSN/view",
+    "https://drive.google.com/file/d/1Xwe97nTqpEUQgqFF7OJyFGYsSRoQ8BMD/view",
+    "https://drive.google.com/file/d/1As3wQBGHskunkfeXvT5IN4rmjeEIPvk-/view",
+    "https://drive.google.com/file/d/18x-ZJIS9yusZfvzZ4Q9R9swUxaxFHeDi/view",
+    "https://drive.google.com/file/d/14_NqRlZ2S-YY7L0z-jT1RFnMSQs_InXs/view",
+    "https://drive.google.com/file/d/1kTHh25fEfMSsTLpl24lY_ZJMOauUS5VT/view",
+    "https://drive.google.com/file/d/1HPwlhn44xosXDu5Zb9ruru5CY1sqwhn6/view",
+    "https://drive.google.com/file/d/1TvE-1CUacBuaPowRFHCQQuB3Zn4oh_RK/view",
+    "https://drive.google.com/file/d/1HNKcOXsLil0V2eQulcu0mZI6wpA7FwTR/view",
+    "https://drive.google.com/file/d/193M4wbk7PIZ3dCV12J24mdnLZMhZt8lw/view",
+    "https://drive.google.com/file/d/1Bvbpaqt16LcY2vlQdWfZpX_Y_GXcMRW5/view",
+    "data\\8.2.24.Our.(In)visible.Work.FINAL.pdf",
+    "https://drive.google.com/file/d/1VU3_v0EQZ2h3rSUa0w-ojM0jQd82cLTo/view",
+    "https://drive.google.com/file/d/1N1atcIj4poMmi3FX29E6UUNL9ESCuTrs/view",
+    "https://drive.google.com/file/d/147rqU5uZ8PtH66_JReM73rfNyqU8jTe8/view",
+    "https://drive.google.com/file/d/19W6UzzoBM9JpLKQJf7-G6X_3tIlE3rPt/view",
+    "https://drive.google.com/file/d/1aMbhB_dUQl-Mm4seZuZhFZ7y-FB11Wrv/view"
+  ]
+}

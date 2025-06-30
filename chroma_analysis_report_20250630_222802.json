@@ -1,0 +1,22 @@
+{
+  "analysis_timestamp": "2025-06-30T22:28:02.427994",
+  "database_file": "./chroma_db/chroma.sqlite3",
+  "database_size_bytes": 79298560,
+  "total_collections": 1,
+  "total_embeddings": 4921,
+  "available_columns": [
+    "id",
+    "segment_id",
+    "embedding_id",
+    "seq_id",
+    "created_at"
+  ],
+  "total_unique_files": 0,
+  "file_type_distribution": {},
+  "pdf_analysis": {
+    "total_pdf_chunks": 0,
+    "unique_pdf_files": 0,
+    "pdf_files": []
+  },
+  "hash_file_hashes": 1037
+}
