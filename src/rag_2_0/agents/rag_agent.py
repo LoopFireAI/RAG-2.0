@@ -144,6 +144,12 @@ def generate_social_media_post(state: RAGState) -> RAGState:
     # Only use context if it was graded as relevant
     if grade == "no":
         context = "No relevant information found in the knowledge base."
+    
+    # Get cleaner source formatting for social media
+    from rag_2_0.utils.source_formatter import SourceFormatter
+    formatter = SourceFormatter()
+    retrieved_docs_metadata = state.get("retrieved_docs_metadata", [])
+    sources_text = formatter.format_sources_compact(retrieved_docs_metadata)
 
     import uuid
     import time
@@ -176,14 +182,12 @@ WRITING GUIDELINES:
 - Make complex ideas accessible without losing sophistication
 - Sound like a thought leader having an authentic moment of insight
 
-POST STRUCTURE:
-1. COMPELLING OPENER: Start with a bold insight, surprising data point, or strategic observation that demonstrates your expertise
+POST STRUCTURE (KEEP IT CONCISE - SOCIAL MEDIA LENGTH):
+1. HOOK: One compelling insight or data point (1-2 sentences max)
 
-2. KNOWLEDGE DELIVERY: Present 3 SPECIFIC insights from the research as valuable knowledge you're sharing - focus on teaching and revealing patterns, not asking questions
+2. VALUE: Share 2-3 key insights in brief, punchy statements (2-3 sentences total)  
 
-3. STRATEGIC SYNTHESIS: Connect these insights to show the bigger systemic pattern or business implication - this is where {detected_leader}'s strategic thinking shines
-
-4. SINGLE ENGAGEMENT HOOK: End with ONE well-crafted question or call-to-action that invites meaningful response
+3. ENGAGEMENT: End with ONE question to drive interaction (1 sentence)
 
 CONTENT APPROACH:
 - Lead with knowledge and insights, not questions
@@ -226,7 +230,9 @@ WRITING STYLE:
 - Use transitions like "What's fascinating is..." "Here's what caught my attention..." "The pattern I'm seeing..."
 - Keep it conversational but sophisticated
 
-GOAL: Create clean, readable social media content that flows naturally and teaches valuable insights, ending with ONE compelling engagement question."""
+GOAL: Create CONCISE social media content (under 150 words) that shares valuable insights and ends with ONE engagement question. Keep it punchy and social media appropriate.
+
+{sources_text}"""
 
     response = llm.invoke([HumanMessage(content=prompt)])
 
@@ -385,8 +391,13 @@ def generate_response(state: RAGState) -> RAGState:
 
     # Only use context if it was graded as relevant
     if grade == "yes":
-        # Format sources as markdown links
-        sources_text = "\n\n📚 **Sources:**\n" + "\n".join([f"- [View Document]({source})" for source in sources]) if sources else ""
+        # Import and use the improved source formatter
+        from rag_2_0.utils.source_formatter import SourceFormatter
+        formatter = SourceFormatter()
+        
+        # Use the retrieved docs metadata for better formatting
+        retrieved_docs_metadata = state.get("retrieved_docs_metadata", [])
+        sources_text = formatter.format_sources_section(retrieved_docs_metadata)
 
         # Analyze query complexity to determine response approach
         is_analytical = any(word in query.lower() for word in ["analyze", "compare", "evaluate", "assess", "examples", "distinct"])

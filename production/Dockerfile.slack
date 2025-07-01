@@ -31,5 +31,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Expose port for Slack API
 EXPOSE 8000
 
-# Run the Slack bot
-CMD ["python", "src/rag_2_0/slack_bot.py"] 
+# Run the Socket Mode Slack bot
+CMD ["python", "src/rag_2_0/slack_bot_socket.py"] 
