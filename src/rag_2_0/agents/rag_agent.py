@@ -134,120 +134,96 @@ def load_tone_profile(leader_name: str) -> str:
 
 
 def generate_social_media_post(state: RAGState) -> RAGState:
-    """Generate a social media post based on the retrieved context and tone."""
-    query = state["query"]
-    context = state.get("context", "")
-    grade = state.get("grade", "yes")
-    detected_leader = state.get("detected_leader", "default")
-    tone_profile = state.get("tone_profile", "Use a professional and helpful tone.")
-
-    # Only use context if it was graded as relevant
-    if grade == "no":
-        context = "No relevant information found in the knowledge base."
-    
-    # Get cleaner source formatting for social media
-    from rag_2_0.utils.source_formatter import SourceFormatter
-    formatter = SourceFormatter()
-    retrieved_docs_metadata = state.get("retrieved_docs_metadata", [])
-    sources_text = formatter.format_sources_compact(retrieved_docs_metadata)
-
+    """Generate a concise social media post."""
     import uuid
     import time
 
     start_time = time.time()
+    query = state["query"]
+    context = state["context"]
+    grade = state.get("grade", "yes")
+    sources = state.get("sources", [])  # Get sources from state
+    detected_leader = state.get("detected_leader", "default")
+    tone_profile = state.get("tone_profile", "Use a professional and helpful tone.")
+    retrieved_docs_metadata = state.get("retrieved_docs_metadata", [])
 
     # Generate unique response ID for feedback correlation
     response_id = str(uuid.uuid4())
 
-    # Determine post length and platform optimization based on query
-    is_long_form = "linkedin" in query.lower() or "detailed" in query.lower() or "examples" in query.lower()
-    char_limit = "400-500 characters" if is_long_form else "200-280 characters"
-    platform_focus = "LinkedIn" if is_long_form else "X/Twitter"
+    if grade == "yes":
+        prompt = f"""You are {detected_leader.upper()}, creating a compelling social media post that shares valuable leadership insights.
 
-    prompt = f"""You are {detected_leader}, crafting a thoughtful social media post that demonstrates your expertise while being genuinely engaging. You need to balance intelligence with relatability.
-
-YOUR AUTHENTIC VOICE ({detected_leader.upper()}):
+🎯 YOUR VOICE ({detected_leader.upper()}):
 {tone_profile}
 
-KNOWLEDGE BASE INSIGHTS:
-{context}
-
-REQUEST:
+📋 QUERY TO ADDRESS:
 {query}
 
-WRITING GUIDELINES:
-- Strike the perfect balance: intelligent but not academic, relatable but not dumbed-down
-- Use {detected_leader}'s signature thinking patterns and language style
-- Ground every insight in SPECIFIC examples from the knowledge base
-- Make complex ideas accessible without losing sophistication
-- Sound like a thought leader having an authentic moment of insight
+📊 KNOWLEDGE BASE CONTENT:
+{context}
 
-POST STRUCTURE (KEEP IT CONCISE - SOCIAL MEDIA LENGTH):
-1. HOOK: One compelling insight or data point (1-2 sentences max)
+📱 SOCIAL MEDIA POST REQUIREMENTS:
+- **Hook** (1-2 sentences): Grab attention with a compelling insight or question
+- **Value** (2-3 insights): Share the most impactful takeaways from the research  
+- **Engagement** (1 question): End with a thought-provoking question for discussion
+- **Style**: Conversational yet authoritative, {detected_leader}'s authentic voice
+- **Length**: Under 150 words for optimal social media engagement
+- **Tone**: {detected_leader}'s characteristic style with actionable insights
 
-2. VALUE: Share 2-3 key insights in brief, punchy statements (2-3 sentences total)  
+📝 FORMAT:
+Create a single, cohesive post (not sections) that flows naturally while incorporating these elements.
 
-3. ENGAGEMENT: End with ONE question to drive interaction (1 sentence)
+🎤 **Your Social Media Post as {detected_leader.upper()}:**"""
+    else:
+        prompt = f"""You are {detected_leader.upper()}, creating a social media post about knowledge limitations.
 
-CONTENT APPROACH:
-- Lead with knowledge and insights, not questions
-- Each insight should feel like valuable information you're generously sharing
-- Use declarative statements that show expertise: "Here's what the data reveals..." "The pattern I'm seeing..." "What's fascinating is..."
-- Save questions for the very end - just one powerful engagement hook
+🎯 YOUR VOICE ({detected_leader.upper()}):
+{tone_profile}
 
-VOICE CALIBRATION FOR {detected_leader.upper()}:
-- Use strategic language that shows business acumen
-- Include growth/scale thinking where natural
-- Reference systems, patterns, and implications
-- Sound like someone who sees the bigger picture
-- Maintain authority while being approachable
+❌ **Knowledge Gap for Query:** "{query}"
 
-LANGUAGE PATTERNS TO USE:
-- "Here's what the research reveals..."
-- "I've been analyzing patterns in..."
-- "The data shows something fascinating..."
-- "What strikes me about this trend..."
-- "The strategic implication here is..."
+Create a brief, authentic social media post acknowledging this limitation while offering value in your characteristic style. Keep it under 100 words."""
 
-FORMATTING RULES:
-- NO asterisks, bold text, or special characters (**text** is forbidden)
-- NO numbered lists (1. 2. 3.) or bullet points  
-- NO headers, subheadings, or section labels
-- Write in clean, flowing paragraphs like natural social media content
-- Use simple line breaks for readability, nothing else
-
-FORBIDDEN:
-- Multiple questions throughout the post
-- ANY formatting symbols: **, ##, •, 1., 2., etc.
-- Section headers like "Identity Influence:" or "Key Insight:"
-- Numbered or bulleted lists of any kind
-- Academic or corporate-style organization
-- More than ONE question (save it for the very end)
-
-WRITING STYLE:
-- Write like you're having an intelligent conversation
-- Flow naturally from one insight to the next
-- Use transitions like "What's fascinating is..." "Here's what caught my attention..." "The pattern I'm seeing..."
-- Keep it conversational but sophisticated
-
-GOAL: Create CONCISE social media content (under 150 words) that shares valuable insights and ends with ONE engagement question. Keep it punchy and social media appropriate.
-
-{sources_text}"""
-
+    # Generate the main response
     response = llm.invoke([HumanMessage(content=prompt)])
+    response_content = response.content
+
+    # Add sources to the response content if available (compact for social media)
+    if grade == "yes" and retrieved_docs_metadata:
+        try:
+            from rag_2_0.utils.source_formatter import SourceFormatter
+            formatter = SourceFormatter()
+            sources_formatted = formatter.format_sources_compact(retrieved_docs_metadata)
+            if sources_formatted:
+                response_content += sources_formatted
+                logger.info(f"✅ Added sources to social media post: {len(retrieved_docs_metadata)} sources")
+            else:
+                # Compact fallback for social media
+                response_content += f"\n\n📄 Based on {len(retrieved_docs_metadata)} research studies"
+                logger.warning("⚠️ Used fallback source formatting for social media")
+        except Exception as e:
+            logger.error(f"Error adding sources to social media post: {e}")
+            # Simple fallback
+            response_content += f"\n\n📄 Based on research"
+
+    # Create the response message with sources included
+    from langchain_core.messages import AIMessage
+    response_with_sources = AIMessage(content=response_content)
 
     # Calculate response time
     response_time_ms = int((time.time() - start_time) * 1000)
 
-    # Update retrieved docs metadata with response time for feedback
-    if "retrieved_docs_metadata" in state:
-        for doc_meta in state["retrieved_docs_metadata"]:
-            doc_meta["response_time_ms"] = response_time_ms
+    # Store response time for feedback tracking
+    for doc_meta in retrieved_docs_metadata:
+        doc_meta["response_time_ms"] = response_time_ms
 
+    # IMPORTANT: Return ALL state information including sources
     return {
-        "messages": [response],
+        "messages": [response_with_sources],  # Use the response with sources included
         "response_id": response_id,
-        "feedback_collected": False
+        "feedback_collected": False,
+        "sources": sources,  # Keep sources in state
+        "retrieved_docs_metadata": retrieved_docs_metadata  # Keep metadata in state
     }
 
 def grade_documents(state: RAGState) -> RAGState:
@@ -385,6 +361,7 @@ def generate_response(state: RAGState) -> RAGState:
     sources = state.get("sources", [])  # Get sources from state
     detected_leader = state.get("detected_leader", "default")
     tone_profile = state.get("tone_profile", "Use a professional and helpful tone.")
+    retrieved_docs_metadata = state.get("retrieved_docs_metadata", [])
 
     # Generate unique response ID for feedback correlation
     response_id = str(uuid.uuid4())
@@ -396,7 +373,6 @@ def generate_response(state: RAGState) -> RAGState:
         formatter = SourceFormatter()
         
         # Use the retrieved docs metadata for better formatting
-        retrieved_docs_metadata = state.get("retrieved_docs_metadata", [])
         sources_text = formatter.format_sources_section(retrieved_docs_metadata)
 
         # Analyze query complexity to determine response approach
@@ -434,7 +410,6 @@ def generate_response(state: RAGState) -> RAGState:
    - Synthesize key takeaways
    - Provide actionable next steps or thought-provoking insights
    - End with {detected_leader}'s motivational style
-   - Include relevant sources for credibility
 
 📝 QUALITY STANDARDS:
 - Every point must be substantiated by the knowledge base content
@@ -442,8 +417,6 @@ def generate_response(state: RAGState) -> RAGState:
 - Maintain {detected_leader}'s authentic voice throughout
 - Ensure practical applicability of insights
 - Include precise details and avoid vague generalizations
-
-{sources_text}
 
 🎤 **Your Response as {detected_leader.upper()}:**"""
     else:
@@ -458,7 +431,31 @@ The available information doesn't contain sufficient relevant content to properl
 🗣️ **Your Response as {detected_leader.upper()}:**
 Acknowledge the limitation authentically in your voice, explain what type of information would be needed, and offer alternative value or next steps that align with your leadership style. Maintain your characteristic tone while being transparent about the knowledge gap."""
 
+    # Generate the main response
     response = llm.invoke([HumanMessage(content=prompt)])
+    response_content = response.content
+
+    # Add sources to the response content if available
+    if grade == "yes" and retrieved_docs_metadata:
+        try:
+            from rag_2_0.utils.source_formatter import SourceFormatter
+            formatter = SourceFormatter()
+            sources_formatted = formatter.format_sources_compact(retrieved_docs_metadata)
+            if sources_formatted:
+                response_content += sources_formatted
+                logger.info(f"✅ Added sources to response content: {len(retrieved_docs_metadata)} sources")
+            else:
+                # Fallback source formatting
+                response_content += f"\n\n📚 **Sources:** {len(retrieved_docs_metadata)} research documents"
+                logger.warning("⚠️ Used fallback source formatting")
+        except Exception as e:
+            logger.error(f"Error adding sources to response: {e}")
+            # Simple fallback
+            response_content += f"\n\n📚 **Sources:** {len(retrieved_docs_metadata)} research documents"
+
+    # Create the response message with sources included
+    from langchain_core.messages import AIMessage
+    response_with_sources = AIMessage(content=response_content)
 
     # Calculate response time
     response_time_ms = int((time.time() - start_time) * 1000)
@@ -469,18 +466,17 @@ Acknowledge the limitation authentically in your voice, explain what type of inf
         logger.info(f"Token usage - Input: {token_usage.get('prompt_tokens', 0)}, Output: {token_usage.get('completion_tokens', 0)}, Total: {token_usage.get('total_tokens', 0)}")
 
     # Store response time for feedback tracking
-    state_update = {
-        "messages": [response],
+    for doc_meta in retrieved_docs_metadata:
+        doc_meta["response_time_ms"] = response_time_ms
+
+    # IMPORTANT: Return ALL state information including sources
+    return {
+        "messages": [response_with_sources],  # Use the response with sources included
         "response_id": response_id,
-        "feedback_collected": False
+        "feedback_collected": False,
+        "sources": sources,  # Keep sources in state
+        "retrieved_docs_metadata": retrieved_docs_metadata  # Keep metadata in state
     }
-
-    # Add response time to retrieved docs metadata for feedback
-    if "retrieved_docs_metadata" in state:
-        for doc_meta in state["retrieved_docs_metadata"]:
-            doc_meta["response_time_ms"] = response_time_ms
-
-    return state_update
 
 def register_response_for_feedback(state: RAGState) -> RAGState:
     """Register response with feedback collector for potential feedback collection."""

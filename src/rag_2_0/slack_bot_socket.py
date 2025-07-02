@@ -6,8 +6,12 @@ Uses WebSocket connection - no public URL needed!
 import os
 import sys
 import logging
+from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -19,10 +23,16 @@ from langchain_core.messages import HumanMessage
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Debug: Log token info (first 20 chars only for security)
+bot_token = os.getenv("SLACK_BOT_TOKEN")
+signing_secret = os.getenv("SLACK_SIGNING_SECRET")
+logger.info(f"Loading SLACK_BOT_TOKEN: {bot_token[:20] if bot_token else 'NOT_SET'}...")
+logger.info(f"Loading SLACK_SIGNING_SECRET: {signing_secret[:20] if signing_secret else 'NOT_SET'}...")
+
 # Initialize Slack app with Socket Mode
 app = App(
-    token=os.getenv("SLACK_BOT_TOKEN"),
-    signing_secret=os.getenv("SLACK_SIGNING_SECRET")
+    token=bot_token,
+    signing_secret=signing_secret
 )
 
 # Initialize RAG system
@@ -30,6 +40,50 @@ rag_graph = create_rag_graph()
 
 # Get bot user ID for feedback validation
 BOT_USER_ID = None
+
+def clean_response_for_slack(response: str) -> str:
+    """Clean up response formatting for better Slack presentation"""
+    if not response:
+        return response
+    
+    # Replace markdown bold with Slack-friendly formatting
+    # Convert **text** to *text* (Slack's bold format)
+    import re
+    response = re.sub(r'\*\*(.*?)\*\*', r'*\1*', response)
+    
+    # Clean up excessive line breaks
+    response = re.sub(r'\n{3,}', '\n\n', response)  # Max 2 consecutive line breaks
+    
+    # Improve sources section formatting for Slack
+    # Match both the original and converted patterns
+    sources_patterns = [
+        r'📚 \*\*Sources:\*\*(.*?)$',  # Original pattern
+        r'📚 \*Sources:\*(.*?)$'       # After ** conversion
+    ]
+    
+    for pattern in sources_patterns:
+        sources_match = re.search(pattern, response, re.DOTALL)
+        if sources_match:
+            sources_content = sources_match.group(1).strip()
+            # Clean up the sources formatting
+            sources_lines = [line.strip() for line in sources_content.split('•') if line.strip()]
+            
+            if sources_lines:
+                clean_sources = "\n\n> *Sources:*"
+                for source in sources_lines[:3]:  # Limit to 3 sources
+                    # Remove extra formatting and clean up
+                    clean_source = source.replace('*', '').strip()
+                    if clean_source:
+                        clean_sources += f"\n> • {clean_source}"
+                
+                # Replace the original sources section
+                response = re.sub(pattern, clean_sources, response, flags=re.DOTALL)
+                break  # Only process once
+    
+    # Ensure the response doesn't end with excessive spacing
+    response = response.strip()
+    
+    return response
 
 def process_rag_query(query: str, user_id: str, user_name: str = "") -> str:
     """Process a query through the RAG system"""
@@ -42,99 +96,47 @@ def process_rag_query(query: str, user_id: str, user_name: str = "") -> str:
         # Run through RAG workflow
         result = rag_graph.invoke(initial_state)
         
-        # Extract the actual response (not the feedback prompt)
+        # Extract the actual response (skip feedback prompts)
         response = ""
-        if result.get("messages") and len(result["messages"]) >= 2:
-            # The workflow adds feedback prompt as last message, so get the second-to-last
-            response_message = result["messages"][-2]
-            if hasattr(response_message, 'content'):
-                response = response_message.content
-            else:
-                response = str(response_message)
-        elif result.get("messages"):
-            # Fallback to last message if only one exists
-            last_message = result["messages"][-1]
-            if hasattr(last_message, 'content'):
-                content = last_message.content
-                # Check if it's a feedback prompt and skip it
-                if "Rate this response" in content or "📝" in content:
-                    response = "I couldn't generate a proper response for your query."
+        if result.get("messages"):
+            # Look for the main response (not feedback prompts)
+            for message in reversed(result["messages"]):  # Start from the end
+                if hasattr(message, 'content'):
+                    content = message.content
+                elif isinstance(message, dict):
+                    content = message.get('content', '')
                 else:
+                    content = str(message)
+                
+                # Skip feedback prompts and find the actual response
+                if (content and 
+                    "Rate this response" not in content and 
+                    "📝" not in content[:10] and  # Skip feedback emojis at start
+                    "Choose Your Voice" not in content and
+                    len(content) > 100):  # Actual responses should be substantial
                     response = content
-            else:
-                response = str(last_message)
-        else:
-            response = "I couldn't generate a response for your query."
+                    break
+            
+            # Fallback: if no good response found, use the first substantial message
+            if not response and len(result["messages"]) > 1:
+                first_msg = result["messages"][1] if len(result["messages"]) > 1 else result["messages"][0]
+                if hasattr(first_msg, 'content'):
+                    response = first_msg.content
+                elif isinstance(first_msg, dict):
+                    response = first_msg.get('content', '')
+                else:
+                    response = str(first_msg)
         
-        # Add sources at the bottom for oversight and auditing
-        try:
-            # Log what we have in result for debugging
-            logger.info(f"Result keys: {list(result.keys())}")
-            logger.info(f"Retrieved docs metadata available: {bool(result.get('retrieved_docs_metadata'))}")
-            logger.info(f"Sources available: {bool(result.get('sources'))}")
-            
-            if result.get("retrieved_docs_metadata"):
-                docs_metadata = result["retrieved_docs_metadata"]
-                logger.info(f"Found {len(docs_metadata)} doc metadata entries")
-                
-                # Log what's in the metadata for debugging
-                for i, doc in enumerate(docs_metadata[:1]):  # Just log first one
-                    logger.info(f"Doc {i} metadata keys: {list(doc.keys())}")
-                    logger.info(f"Doc {i} title: {doc.get('title', 'No title')}")
-                    logger.info(f"Doc {i} source: {doc.get('source', 'No source')}")
-                
-                # Enhanced source formatting for Slack
-                response += f"\n\n---\n📚 **Sources** (for verification):"
-                for i, doc in enumerate(docs_metadata[:3]):  # Limit to 3
-                    # Try multiple fields for source name
-                    title = doc.get('title') or doc.get('source') or 'Unknown Source'
-                    
-                    # Clean up the title extensively
-                    clean_title = (title
-                                 .replace('.pdf', '')
-                                 .replace('_', ' ')
-                                 .replace('-', ' ')
-                                 .replace('.docx', '')
-                                 .replace('.txt', '')
-                                 .strip())
-                    
-                    # Handle Google Drive file names better
-                    if '/d/' in clean_title:
-                        clean_title = "Research Document"
-                    elif 'drive.google.com' in clean_title:
-                        clean_title = "Leadership Research Paper"
-                    
-                    # Proper title case
-                    clean_title = ' '.join(word.capitalize() for word in clean_title.split())
-                    
-                    # Truncate if too long
-                    if len(clean_title) > 45:
-                        clean_title = clean_title[:42] + "..."
-                    
-                    response += f"\n• {clean_title}"
-            
-            # Fallback: try to get sources from other places in result
-            elif result.get("sources"):
-                sources = result["sources"][:3]  # Limit to 3
-                logger.info(f"Using fallback sources: {sources}")
-                response += f"\n\n---\n📚 **Sources** (for verification):"
-                for source in sources:
-                    # Clean up source names
-                    clean_source = source.replace('.pdf', '').replace('_', ' ').replace('-', ' ').title()
-                    if len(clean_source) > 50:
-                        clean_source = clean_source[:47] + "..."
-                    response += f"\n• {clean_source}"
-            else:
-                logger.warning("No sources found in result")
-                        
-        except Exception as e:
-            logger.error(f"Error formatting sources: {e}")
-            # Add basic source info if available
-            if result.get("sources"):
-                response += f"\n\n---\n📚 **Sources**: {len(result['sources'])} research documents"
+        # Final fallback
+        if not response:
+            response = "I couldn't generate a response for your query."
+
+        # Clean up formatting for Slack presentation
+        response = clean_response_for_slack(response)
         
         # Log for analytics
         logger.info(f"Query from {user_id} ({user_name}): '{query[:50]}...' -> Response length: {len(response)}")
+        logger.info(f"Sources included in response: {'Sources' in response}")
         
         return response
         
@@ -223,8 +225,9 @@ def handle_mention(event, say, client, ack):
         greeting = """👋 Hi there! I'm your Wells Leadership Research assistant.
 
 I can help you explore insights from our extensive collection of leadership research papers. Just ask me questions like:
+
 • "What makes an effective leader?"
-• "How do leaders build trust?"
+• "How do leaders build trust?"  
 • "What are the key leadership competencies?"
 • "Tell me about transformational leadership"
 
@@ -285,6 +288,41 @@ Current log will show if reaction events are received."""
             })
             return
     
+    # Special feedback test command
+    if user_query.lower() in ["feedback", "test-feedback", "feedback-test"]:
+        try:
+            # Send a test message that should trigger feedback when reacted to
+            test_response = respond({
+                "response_type": "in_channel",
+                "text": """🧪 **Feedback Test Message**
+                
+This is a test message from the Wells RAG bot. 
+
+**To test feedback system:**
+1. Add a ✅ checkmark reaction to this message
+2. If working, you should see a feedback prompt with rating buttons
+3. Check the logs for reaction events
+
+**Expected behavior:**
+✅ Reaction detected → Feedback prompt appears → Rating collected
+
+If this doesn't work, check that the Slack app has:
+• `reactions:read` scope
+• `reactions:write` scope  
+• `reaction_added` event subscription""",
+                "mrkdwn": True
+            })
+            logger.info(f"📤 Sent feedback test message: {test_response}")
+            return
+            
+        except Exception as e:
+            logger.error(f"Error in feedback test command: {e}")
+            respond({
+                "response_type": "ephemeral",
+                "text": f"Feedback test failed: {e}"
+            })
+            return
+    
     if not user_query:
         respond({
             "response_type": "ephemeral",
@@ -313,24 +351,36 @@ Current log will show if reaction events are received."""
 def handle_reaction_added(event, say, client, ack):
     """Handle when users react to bot messages"""
     ack()
-    logger.info(f"🔄 Reaction added event received: {event}")
+    logger.info(f"🔄 REACTION EVENT RECEIVED!")
+    logger.info(f"🔍 Full event data: {event}")
     
     # Log ALL reaction details for debugging
     reaction = event.get("reaction")
     user = event.get("user")
     item = event.get("item", {})
     logger.info(f"👤 User: {user}")
-    logger.info(f"😀 Reaction: {reaction}")
+    logger.info(f"😀 Reaction emoji name: '{reaction}'")
     logger.info(f"📧 Channel: {item.get('channel')}")
     logger.info(f"⏰ Message TS: {item.get('ts')}")
     
-    # For debugging: accept ANY reaction for now, log what we get
-    if reaction in ["white_check_mark", "heavy_check_mark", "check", "checkmark", "+1", "thumbsup"]:
+    # ENHANCED: Log every single reaction we receive to identify the correct name
+    logger.info(f"🧪 TESTING: Is '{reaction}' a checkmark reaction?")
+    
+    # Expanded list of possible checkmark reaction names
+    valid_reactions = [
+        "white_check_mark", "heavy_check_mark", "check", "checkmark", 
+        "+1", "thumbsup", "thumbs_up", "ballot_box_with_check",
+        "white-check-mark", "heavy-check-mark", "check-mark",
+        "tick", "approved", "done", "yes"
+    ]
+    
+    if reaction in valid_reactions:
         logger.info(f"✅ Processing feedback reaction: {reaction}")
     else:
         logger.info(f"⏭️ Ignoring reaction: {reaction} (not a feedback reaction)")
-        return
-    
+        logger.info(f"🔍 Available valid reactions: {valid_reactions}")
+        # STILL CONTINUE to check if it's on a bot message for debugging - we want to see all reactions
+        
     # Only respond to reactions on bot messages
     user_id = event.get("user")
     item = event.get("item", {})
@@ -338,13 +388,16 @@ def handle_reaction_added(event, say, client, ack):
     message_ts = item.get("ts")
     
     if not all([user_id, channel, message_ts]):
+        logger.warning(f"Missing required data: user_id={user_id}, channel={channel}, message_ts={message_ts}")
         return
     
     try:
         # Get bot user ID if not cached
         global BOT_USER_ID
         if not BOT_USER_ID:
-            BOT_USER_ID = client.auth_test()["user_id"]
+            auth_response = client.auth_test()
+            BOT_USER_ID = auth_response["user_id"]
+            logger.info(f"🤖 Bot user ID set to: {BOT_USER_ID}")
         
         # Get the original message to check if it's from the bot
         response = client.conversations_history(
@@ -356,105 +409,137 @@ def handle_reaction_added(event, say, client, ack):
         
         messages = response.get("messages", [])
         if not messages:
+            logger.warning(f"No message found for ts={message_ts}")
             return
             
         message = messages[0]
-        # Check if the message is from our bot (correct logic)
-        logger.info(f"Message user: {message.get('user')}, Bot ID: {BOT_USER_ID}, Bot field: {message.get('bot_id')}")
+        message_user = message.get("user")
+        message_bot_id = message.get("bot_id")
         
-        if message.get("user") == BOT_USER_ID or message.get("bot_id"):
-            logger.info(f"📝 User {user_id} reacted with checkmark to bot message, prompting for feedback")
+        logger.info(f"📧 Message details - User: {message_user}, Bot ID: {message_bot_id}, Our Bot ID: {BOT_USER_ID}")
+        
+        # Check if the message is from our bot 
+        is_bot_message = (message_user == BOT_USER_ID) or bool(message_bot_id)
+        
+        if not is_bot_message:
+            logger.info(f"🚫 Reaction not on bot message (message_user={message_user}, bot_id={message_bot_id})")
+            return
             
-            # Check if we already prompted for feedback on this message
-            try:
-                thread_messages = client.conversations_replies(
-                    channel=channel,
-                    ts=message_ts,
-                    limit=10
-                ).get("messages", [])
+        # Only proceed if it's a valid feedback reaction
+        if reaction not in valid_reactions:
+            logger.info(f"🚫 Reaction '{reaction}' not in valid feedback reactions")
+            return
+            
+        logger.info(f"📝 User {user_id} reacted with '{reaction}' to bot message, prompting for feedback")
+        
+        # Check if we already prompted for feedback on this message
+        try:
+            thread_messages = client.conversations_replies(
+                channel=channel,
+                ts=message_ts,
+                limit=20  # Increased limit to catch more thread messages
+            ).get("messages", [])
+            
+            # Skip if feedback was already requested
+            feedback_already_requested = False
+            for thread_msg in thread_messages:
+                msg_text = thread_msg.get("text", "").lower()
+                if (thread_msg.get("user") == BOT_USER_ID and 
+                    ("rate this response" in msg_text or "thanks for the checkmark" in msg_text)):
+                    logger.info("Feedback already requested for this message, skipping")
+                    feedback_already_requested = True
+                    break
+                    
+            if feedback_already_requested:
+                return
                 
-                # Skip if feedback was already requested
-                for thread_msg in thread_messages:
-                    if (thread_msg.get("user") == BOT_USER_ID and 
-                        "rate this response" in thread_msg.get("text", "").lower()):
-                        logger.info("Feedback already requested for this message, skipping")
-                        return
-            except Exception as e:
-                logger.warning(f"Could not check thread messages: {e}")
-                # Continue anyway
-            
-            # Create feedback prompt with interactive buttons
-            feedback_blocks = [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "📝 *Thanks for the checkmark!* How would you rate this response?"
-                    }
-                },
-                {
-                    "type": "actions",
-                    "elements": [
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "1 ⭐"},
-                            "value": "1",
-                            "action_id": "feedback_rating_1"
-                        },
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "2 ⭐⭐"},
-                            "value": "2",
-                            "action_id": "feedback_rating_2"
-                        },
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "3 ⭐⭐⭐"},
-                            "value": "3",
-                            "action_id": "feedback_rating_3"
-                        },
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "4 ⭐⭐⭐⭐"},
-                            "value": "4",
-                            "action_id": "feedback_rating_4"
-                        },
-                        {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "5 ⭐⭐⭐⭐⭐"},
-                            "value": "5",
-                            "action_id": "feedback_rating_5"
-                        }
-                    ]
-                },
-                {
-                    "type": "input",
-                    "element": {
-                        "type": "plain_text_input",
-                        "multiline": True,
-                        "placeholder": {
-                            "type": "plain_text",
-                            "text": "Any specific feedback or suggestions? (optional)"
-                        },
-                        "action_id": "feedback_text"
-                    },
-                    "label": {
-                        "type": "plain_text",
-                        "text": "Additional Comments"
-                    },
-                    "optional": True
+        except Exception as e:
+            logger.warning(f"Could not check thread messages: {e}")
+            # Continue anyway - better to potentially duplicate than miss feedback
+        
+        # Create feedback prompt with interactive buttons
+        feedback_blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"✨ *Thanks for the feedback!* How would you rate this response?"
                 }
-            ]
-            
-            # Send feedback prompt in thread
-            say(
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "1 ⭐"},
+                        "value": "1",
+                        "action_id": "feedback_rating_1"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "2 ⭐⭐"},
+                        "value": "2",
+                        "action_id": "feedback_rating_2"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "3 ⭐⭐⭐"},
+                        "value": "3",
+                        "action_id": "feedback_rating_3"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "4 ⭐⭐⭐⭐"},
+                        "value": "4",
+                        "action_id": "feedback_rating_4"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "5 ⭐⭐⭐⭐⭐"},
+                        "value": "5",
+                        "action_id": "feedback_rating_5"
+                    }
+                ]
+            },
+            {
+                "type": "input",
+                "element": {
+                    "type": "plain_text_input",
+                    "multiline": True,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Optional: Share specific feedback or suggestions..."
+                    },
+                    "action_id": "feedback_text"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Additional Comments"
+                },
+                "optional": True
+            }
+        ]
+        
+        # Send feedback prompt in thread
+        try:
+            feedback_response = say(
                 text="Please rate this response:",
                 blocks=feedback_blocks,
+                thread_ts=message_ts
+            )
+            logger.info(f"✅ Feedback prompt sent successfully: {feedback_response}")
+        except Exception as e:
+            logger.error(f"❌ Failed to send feedback prompt: {e}")
+            # Fallback to simple text message
+            say(
+                text=f"Thanks for the {reaction}! Please rate this response (1-5) and optionally provide feedback.",
                 thread_ts=message_ts
             )
             
     except Exception as e:
         logger.error(f"Error handling reaction: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
 
 @app.action("feedback_rating_1")
 @app.action("feedback_rating_2") 
@@ -506,12 +591,12 @@ def handle_feedback_rating(ack, body, client, respond):
         
         # Update the message to show feedback was received
         star_display = "⭐" * rating
-        response_text = f"✅ *Feedback received!*\n\n🌟 **Rating:** {rating}/5 {star_display}"
         
+        # Create a clean, professional confirmation message
         if text_feedback:
-            response_text += f"\n💬 **Comments:** {text_feedback}"
-        
-        response_text += "\n\n_Thank you for helping improve our responses!_ 🙏"
+            response_text = f"✅ *Thank you for your feedback!*\n\n🌟 *Rating:* {rating}/5 {star_display}\n💬 *Comments:* {text_feedback}\n\n_Your feedback helps us improve our responses._"
+        else:
+            response_text = f"✅ *Thank you for your feedback!*\n\n🌟 *Rating:* {rating}/5 {star_display}\n\n_Your feedback helps us improve our responses._"
         
         # Replace the feedback prompt with confirmation
         respond({
@@ -564,6 +649,21 @@ def debug_all_events(body, logger):
     event_type = body.get("event", {}).get("type", "unknown")
     if event_type not in ["app_mention", "message"]:  # Don't spam common events
         logger.info(f"🔍 DEBUG: {event_type} event: {body}")
+
+# Add a specific handler to log ALL incoming webhooks
+@app.middleware
+def log_all_requests(body, next, logger):
+    """Log all incoming Slack events for debugging"""
+    event_type = body.get("type", "unknown")
+    if event_type == "event_callback":
+        inner_event = body.get("event", {})
+        inner_type = inner_event.get("type", "unknown")
+        logger.info(f"🌐 Event callback received: {inner_type}")
+        if inner_type == "reaction_added":
+            logger.info(f"🎯 REACTION EVENT DETECTED: {inner_event}")
+    else:
+        logger.info(f"🌐 Request type: {event_type}")
+    next()
 
 if __name__ == "__main__":
     # Check required environment variables

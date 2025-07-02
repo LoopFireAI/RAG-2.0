@@ -1,0 +1,672 @@
+{
+  "summary": {
+    "total_chunks": 4921,
+    "total_unique_sources": 47,
+    "google_drive_files": 45,
+    "pdf_files": 1
+  },
+  "sources": [
+    {
+      "source": "Google Doc: 8.2.24.Our.(In)visible.Work.FINAL",
+      "type": "google_docs",
+      "chunks": 149,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/8.2.24.Our.(In)visible.Work.FINAL",
+        "source": "https://docs.google.com/document/d/1jUO0XrmoVZc474SeUPxalCTBnelJI1sogJlJRWFHaqo/edit?usp=drivesdk",
+        "when": "2025-06-14T19:57:17.359Z",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "1181106",
+        "title": "8.2.24.Our.(In)visible.Work.FINAL"
+      }
+    },
+    {
+      "source": "Google Drive File: 1-XoU1Y2t0NfuivzWIUImbFFj12P537hu",
+      "type": "google_drive",
+      "chunks": 63,
+      "sample_metadata": {
+        "size": "261971",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/IJHMS.2017.Kim.Wells.Kim.Chella.pdf",
+        "title": "IJHMS.2017.Kim.Wells.Kim.Chella.pdf",
+        "source": "https://drive.google.com/file/d/1-XoU1Y2t0NfuivzWIUImbFFj12P537hu/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 147rqU5uZ8PtH66_JReM73rfNyqU8jTe8",
+      "type": "google_drive",
+      "chunks": 103,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/JIS.2016.Wells.Walker.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "page": 0,
+        "title": "JIS.2016.Wells.Walker.pdf",
+        "size": "362295",
+        "source": "https://drive.google.com/file/d/147rqU5uZ8PtH66_JReM73rfNyqU8jTe8/view",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 14_NqRlZ2S-YY7L0z-jT1RFnMSQs_InXs",
+      "type": "google_drive",
+      "chunks": 112,
+      "sample_metadata": {
+        "source": "https://drive.google.com/file/d/14_NqRlZ2S-YY7L0z-jT1RFnMSQs_InXs/view",
+        "title": "2024.Damon.etal.micromomentleaders.JIS.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/2024.Damon.etal.micromomentleaders.JIS.pdf",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "size": "587636"
+      }
+    },
+    {
+      "source": "Google Drive File: 15JqJlli6UVWWFgRPrL-o3m3VrwwfCZVn",
+      "type": "google_drive",
+      "chunks": 68,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/wells_jsfd_2016_servant-leadership-and-sfd.pdf",
+        "title": "wells_jsfd_2016_servant-leadership-and-sfd.pdf",
+        "size": "462990",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/15JqJlli6UVWWFgRPrL-o3m3VrwwfCZVn/view",
+        "page": 0
+      }
+    },
+    {
+      "source": "Google Drive File: 18x-ZJIS9yusZfvzZ4Q9R9swUxaxFHeDi",
+      "type": "google_drive",
+      "chunks": 107,
+      "sample_metadata": {
+        "title": "inpress.JSM.Damon.Leberman.Wells.Burton.Ferkins.Weese.WealtyPeachey.leadership.practice.pdf",
+        "source": "https://drive.google.com/file/d/18x-ZJIS9yusZfvzZ4Q9R9swUxaxFHeDi/view",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/inpress.JSM.Damon.Leberman.Wells.Burton.Ferkins.Weese.WealtyPeachey.leadership.practice.pdf",
+        "size": "1114333",
+        "page": 0,
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 18z7GyNmZFaLlWiOZ_rfaK8FIPs3xMQ4C",
+      "type": "google_drive",
+      "chunks": 84,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/JCD.Wells.Kerwin.2017.pdf",
+        "size": "188793",
+        "title": "JCD.Wells.Kerwin.2017.pdf",
+        "owner": "emily@loopfire.ai",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/18z7GyNmZFaLlWiOZ_rfaK8FIPs3xMQ4C/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 193M4wbk7PIZ3dCV12J24mdnLZMhZt8lw",
+      "type": "google_drive",
+      "chunks": 77,
+      "sample_metadata": {
+        "title": "Welty Peachey, Burton, & Wells (2014) Examining the influence of transformational leadership, organizational commitment, job e.pdf",
+        "size": "447340",
+        "source": "https://drive.google.com/file/d/193M4wbk7PIZ3dCV12J24mdnLZMhZt8lw/view",
+        "full_path": "Wells Quest Content/Articles/Welty Peachey, Burton, & Wells (2014) Examining the influence of transformational leadership, organizational commitment, job e.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "owner": "emily@loopfire.ai",
+        "page": 0
+      }
+    },
+    {
+      "source": "Google Drive File: 19W6UzzoBM9JpLKQJf7-G6X_3tIlE3rPt",
+      "type": "google_drive",
+      "chunks": 128,
+      "sample_metadata": {
+        "source": "https://drive.google.com/file/d/19W6UzzoBM9JpLKQJf7-G6X_3tIlE3rPt/view",
+        "full_path": "Wells Quest Content/Articles/2023.Brougham.Taylor.Huml.Kloetzer.Wells.JIAA.pdf",
+        "page": 0,
+        "size": "557945",
+        "owner": "emily@loopfire.ai",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "title": "2023.Brougham.Taylor.Huml.Kloetzer.Wells.JIAA.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1As3wQBGHskunkfeXvT5IN4rmjeEIPvk-",
+      "type": "google_drive",
+      "chunks": 118,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/JIS.2017.Hancock.Grappendorf.Wells.Burton..pdf",
+        "source": "https://drive.google.com/file/d/1As3wQBGHskunkfeXvT5IN4rmjeEIPvk-/view",
+        "page": 0,
+        "title": "JIS.2017.Hancock.Grappendorf.Wells.Burton..pdf",
+        "size": "398351",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1BtNyT03DVox3MxWbNKOfVKVf3rbfpqUf",
+      "type": "google_drive",
+      "chunks": 90,
+      "sample_metadata": {
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "title": "jsm.Welty.Burton.Wells.Chung.2018.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/jsm.Welty.Burton.Wells.Chung.2018.pdf",
+        "source": "https://drive.google.com/file/d/1BtNyT03DVox3MxWbNKOfVKVf3rbfpqUf/view",
+        "size": "178939"
+      }
+    },
+    {
+      "source": "Google Drive File: 1Bvbpaqt16LcY2vlQdWfZpX_Y_GXcMRW5",
+      "type": "google_drive",
+      "chunks": 120,
+      "sample_metadata": {
+        "size": "797870",
+        "title": "2021.Darvinetal.Breaking the glass monitor_ esports.SMR.pdf",
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/2021.Darvinetal.Breaking the glass monitor_ esports.SMR.pdf",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1Bvbpaqt16LcY2vlQdWfZpX_Y_GXcMRW5/view",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']"
+      }
+    },
+    {
+      "source": "Google Drive File: 1CMEJNPyDfSycoFXZGdPFktIulPy-ZV2f",
+      "type": "google_drive",
+      "chunks": 80,
+      "sample_metadata": {
+        "source": "https://drive.google.com/file/d/1CMEJNPyDfSycoFXZGdPFktIulPy-ZV2f/view",
+        "page": 0,
+        "size": "158079",
+        "owner": "emily@loopfire.ai",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/Wells.WeltyPeachey.Walker.2014.JIS.asst.coach.pdf",
+        "title": "Wells.WeltyPeachey.Walker.2014.JIS.asst.coach.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1DagdMKcx3BuXVyb085yZpgHdLZlASSq6",
+      "type": "google_drive",
+      "chunks": 136,
+      "sample_metadata": {
+        "size": "1660941",
+        "owner": "emily@loopfire.ai",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "title": "2017.JIS.Taylor.Wells.pdf",
+        "page": 0,
+        "full_path": "Wells Quest Content/Articles/2017.JIS.Taylor.Wells.pdf",
+        "source": "https://drive.google.com/file/d/1DagdMKcx3BuXVyb085yZpgHdLZlASSq6/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1EPOMCpOb5z79s9k-hWx-qQX08l_2JKag",
+      "type": "google_drive",
+      "chunks": 9,
+      "sample_metadata": {
+        "size": "232546",
+        "source": "https://drive.google.com/file/d/1EPOMCpOb5z79s9k-hWx-qQX08l_2JKag/view",
+        "page": 0,
+        "full_path": "Wells Quest Content/Trade.Journals/2020.Vinik Sport & Entertainment Management Program Enters National Collaborative to Examine Gender Inequality in Sports _ USF Muma College of Business.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "title": "2020.Vinik Sport & Entertainment Management Program Enters National Collaborative to Examine Gender Inequality in Sports _ USF Muma College of Business.pdf",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1HNKcOXsLil0V2eQulcu0mZI6wpA7FwTR",
+      "type": "google_drive",
+      "chunks": 5,
+      "sample_metadata": {
+        "size": "20823330",
+        "title": "CABMACornerMarch17.Wells.Croom2017.pdf",
+        "owner": "emily@loopfire.ai",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Trade.Journals/CABMACornerMarch17.Wells.Croom2017.pdf",
+        "source": "https://drive.google.com/file/d/1HNKcOXsLil0V2eQulcu0mZI6wpA7FwTR/view",
+        "page": 0
+      }
+    },
+    {
+      "source": "Google Drive File: 1HPwlhn44xosXDu5Zb9ruru5CY1sqwhn6",
+      "type": "google_drive",
+      "chunks": 87,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "page": 0,
+        "full_path": "Wells Quest Content/Articles/jsm.2017-0153.pdf",
+        "size": "178403",
+        "title": "jsm.2017-0153.pdf",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1HPwlhn44xosXDu5Zb9ruru5CY1sqwhn6/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1HWslYoz5OGaRB6HQm4N3Xa69FLnlh2WC",
+      "type": "google_drive",
+      "chunks": 122,
+      "sample_metadata": {
+        "page": 0,
+        "full_path": "Wells Quest Content/Articles/2021.JIIA.Berg.Warner.Walsh.Wells.athlete.development.pdf",
+        "size": "514179",
+        "title": "2021.JIIA.Berg.Warner.Walsh.Wells.athlete.development.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "source": "https://drive.google.com/file/d/1HWslYoz5OGaRB6HQm4N3Xa69FLnlh2WC/view",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1L_9J2wJjmIRGKE0_w3NFWHBZZOoCNORa",
+      "type": "google_drive",
+      "chunks": 40,
+      "sample_metadata": {
+        "title": "RSJ.2016.Wells.Lower.pdf",
+        "full_path": "Wells Quest Content/Articles/RSJ.2016.Wells.Lower.pdf",
+        "source": "https://drive.google.com/file/d/1L_9J2wJjmIRGKE0_w3NFWHBZZOoCNORa/view",
+        "owner": "emily@loopfire.ai",
+        "page": 0,
+        "size": "422618",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']"
+      }
+    },
+    {
+      "source": "Google Drive File: 1N1atcIj4poMmi3FX29E6UUNL9ESCuTrs",
+      "type": "google_drive",
+      "chunks": 80,
+      "sample_metadata": {
+        "size": "106178",
+        "source": "https://drive.google.com/file/d/1N1atcIj4poMmi3FX29E6UUNL9ESCuTrs/view",
+        "title": "Wells & Welty Peachey (2011 Team Performance Management).pdf",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/Wells & Welty Peachey (2011 Team Performance Management).pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1Nl4BR3WfZWOnwdBmiQg6WqkSvPDaMSD4",
+      "type": "google_drive",
+      "chunks": 105,
+      "sample_metadata": {
+        "size": "320155",
+        "title": "2020.JSM.Wells.SartoreBaldwin.Walker.Gray.pdf",
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/2020.JSM.Wells.SartoreBaldwin.Walker.Gray.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1Nl4BR3WfZWOnwdBmiQg6WqkSvPDaMSD4/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1O7AMIqWVcNJOR6K1MfC3A7DzgO8NbzWT",
+      "type": "google_drive",
+      "chunks": 123,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1O7AMIqWVcNJOR6K1MfC3A7DzgO8NbzWT/view",
+        "page": 0,
+        "size": "844725",
+        "title": "JIIA.2019.Darvin.Taylor.Wells.getin.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/JIIA.2019.Darvin.Taylor.Wells.getin.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1OhF_3_uY-hWPYcC8r3MZDiIHYwmsiICh",
+      "type": "google_drive",
+      "chunks": 104,
+      "sample_metadata": {
+        "page": 0,
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "1076587",
+        "owner": "emily@loopfire.ai",
+        "title": "2022.JSM.Damon.Leberman.Wells.Burton.Ferkins.Weese.WeltyPeachey.pdf",
+        "source": "https://drive.google.com/file/d/1OhF_3_uY-hWPYcC8r3MZDiIHYwmsiICh/view",
+        "full_path": "Wells Quest Content/Articles/2022.JSM.Damon.Leberman.Wells.Burton.Ferkins.Weese.WeltyPeachey.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1SKGtXnjOtfwzOF3IyoZcpO6uno4xyyQS",
+      "type": "google_drive",
+      "chunks": 80,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/JASM.2016.Kim.Kim.Wells.pdf",
+        "source": "https://drive.google.com/file/d/1SKGtXnjOtfwzOF3IyoZcpO6uno4xyyQS/view",
+        "title": "JASM.2016.Kim.Kim.Wells.pdf",
+        "page": 0,
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "886021"
+      }
+    },
+    {
+      "source": "Google Drive File: 1SWMEF2tQvm8RM4WYfCTG1Q5TmyPViExW",
+      "type": "google_drive",
+      "chunks": 69,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/EM.2014.Odio.Wells.Kerwin.pdf",
+        "owner": "emily@loopfire.ai",
+        "page": 0,
+        "title": "EM.2014.Odio.Wells.Kerwin.pdf",
+        "size": "809360",
+        "source": "https://drive.google.com/file/d/1SWMEF2tQvm8RM4WYfCTG1Q5TmyPViExW/view",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']"
+      }
+    },
+    {
+      "source": "Google Drive File: 1TvE-1CUacBuaPowRFHCQQuB3Zn4oh_RK",
+      "type": "google_drive",
+      "chunks": 10,
+      "sample_metadata": {
+        "title": "2023.Essential HR upgrades are needed for workplace diversity, accountability.pdf",
+        "full_path": "Wells Quest Content/Trade.Journals/2023.Essential HR upgrades are needed for workplace diversity, accountability.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "source": "https://drive.google.com/file/d/1TvE-1CUacBuaPowRFHCQQuB3Zn4oh_RK/view",
+        "page": 0,
+        "size": "152132",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1V1VqpSV792BiUkwzeGdE3F7DXLW4LPos",
+      "type": "google_drive",
+      "chunks": 89,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "187555",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1V1VqpSV792BiUkwzeGdE3F7DXLW4LPos/view",
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/Burton, Welty Peachey, & Wells (2017) - JSM Role of SL in Ethical Climate.pdf",
+        "title": "Burton, Welty Peachey, & Wells (2017) - JSM Role of SL in Ethical Climate.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1VU3_v0EQZ2h3rSUa0w-ojM0jQd82cLTo",
+      "type": "google_drive",
+      "chunks": 337,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/8.2.24.Our.(In)visible.Work.FINAL.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "2824904",
+        "page": 0,
+        "title": "8.2.24.Our.(In)visible.Work.FINAL.pdf",
+        "source": "https://drive.google.com/file/d/1VU3_v0EQZ2h3rSUa0w-ojM0jQd82cLTo/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1XP-Tlo7GorfTlQNm5Pz4awcdIe-ljodR",
+      "type": "google_drive",
+      "chunks": 3,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/426e63d138e7e240d6b5193c564c0388.pdf",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1XP-Tlo7GorfTlQNm5Pz4awcdIe-ljodR/view",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "title": "426e63d138e7e240d6b5193c564c0388.pdf",
+        "size": "54973",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1Xwe97nTqpEUQgqFF7OJyFGYsSRoQ8BMD",
+      "type": "google_drive",
+      "chunks": 58,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "272103",
+        "title": "JSSAE.2011.Foo.Wells.pdf",
+        "page": 0,
+        "full_path": "Wells Quest Content/Articles/JSSAE.2011.Foo.Wells.pdf",
+        "source": "https://drive.google.com/file/d/1Xwe97nTqpEUQgqFF7OJyFGYsSRoQ8BMD/view",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1ZplJuBQm8AD2CJGw_f2dqXAoD50uzy8i",
+      "type": "google_drive",
+      "chunks": 160,
+      "sample_metadata": {
+        "size": "10913847",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "page": 1,
+        "full_path": "Wells Quest Content/Articles/Dec.Jan.AVCA.Wells.WeltyPeachey.2011.pdf",
+        "title": "Dec.Jan.AVCA.Wells.WeltyPeachey.2011.pdf",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1ZplJuBQm8AD2CJGw_f2dqXAoD50uzy8i/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1a6Q6ZzqxTwWbqYEJ7riwsqoLg1Sy245G",
+      "type": "google_drive",
+      "chunks": 62,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/Wells.Aicher.2013.GI.pdf",
+        "title": "Wells.Aicher.2013.GI.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "source": "https://drive.google.com/file/d/1a6Q6ZzqxTwWbqYEJ7riwsqoLg1Sy245G/view",
+        "size": "229196",
+        "page": 0,
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1aHKkBIFFzz2bVFzXtuiWUofV6qr4ADrD",
+      "type": "google_drive",
+      "chunks": 72,
+      "sample_metadata": {
+        "title": "IJSM.Wells.Kerwin.Ryan.2016.pdf",
+        "full_path": "Wells Quest Content/Articles/IJSM.Wells.Kerwin.Ryan.2016.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1aHKkBIFFzz2bVFzXtuiWUofV6qr4ADrD/view",
+        "page": 0,
+        "size": "858367"
+      }
+    },
+    {
+      "source": "Google Drive File: 1aMbhB_dUQl-Mm4seZuZhFZ7y-FB11Wrv",
+      "type": "google_drive",
+      "chunks": 27,
+      "sample_metadata": {
+        "size": "449269",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "source": "https://drive.google.com/file/d/1aMbhB_dUQl-Mm4seZuZhFZ7y-FB11Wrv/view",
+        "owner": "emily@loopfire.ai",
+        "page": 0,
+        "title": "2020.ADU.Wells.et.al.The Designation, Stigmatization, and Marginalization of Senior Woman Administrators.pdf",
+        "full_path": "Wells Quest Content/Articles/2020.ADU.Wells.et.al.The Designation, Stigmatization, and Marginalization of Senior Woman Administrators.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1amCtjELn97tCqImOjObKKznh-nKhUkMh",
+      "type": "google_drive",
+      "chunks": 120,
+      "sample_metadata": {
+        "size": "787604",
+        "source": "https://drive.google.com/file/d/1amCtjELn97tCqImOjObKKznh-nKhUkMh/view",
+        "page": 0,
+        "full_path": "Wells Quest Content/Articles/2021.Darvin.Holden,Wells.Baker.SMR.esport.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "owner": "emily@loopfire.ai",
+        "title": "2021.Darvin.Holden,Wells.Baker.SMR.esport.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1bQvc4R0ai336t1cxCaGBmiSs1Kvmzxe1",
+      "type": "google_drive",
+      "chunks": 68,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/JFSD.Wells.WeltyPeachey.Servant 2016.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "title": "JFSD.Wells.WeltyPeachey.Servant 2016.pdf",
+        "size": "928431",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1bQvc4R0ai336t1cxCaGBmiSs1Kvmzxe1/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1etXTzJNbgjKfeB_G5wrvADV73d0eMgSN",
+      "type": "google_drive",
+      "chunks": 91,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/Welty Peachey et al. (2018) - SL in SDP (JSM).pdf",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "title": "Welty Peachey et al. (2018) - SL in SDP (JSM).pdf",
+        "size": "189316",
+        "source": "https://drive.google.com/file/d/1etXTzJNbgjKfeB_G5wrvADV73d0eMgSN/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1irHZ-senQP-u9InOiDiARtUzM35rPByx",
+      "type": "google_drive",
+      "chunks": 9,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "137059",
+        "title": "2022.SBJ.Wells.Abundance mindset could mean an end to false competition created for women.pdf",
+        "full_path": "Wells Quest Content/Trade.Journals/2022.SBJ.Wells.Abundance mindset could mean an end to false competition created for women.pdf",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1irHZ-senQP-u9InOiDiARtUzM35rPByx/view",
+        "page": 0
+      }
+    },
+    {
+      "source": "Google Drive File: 1k-AqleQdCyEBbohYqhWjcXTVI8wFeQb_",
+      "type": "google_drive",
+      "chunks": 88,
+      "sample_metadata": {
+        "title": "Wells.Kerwin.JCD.2016.pdf",
+        "source": "https://drive.google.com/file/d/1k-AqleQdCyEBbohYqhWjcXTVI8wFeQb_/view",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/Wells.Kerwin.JCD.2016.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "188315"
+      }
+    },
+    {
+      "source": "Google Drive File: 1kTHh25fEfMSsTLpl24lY_ZJMOauUS5VT",
+      "type": "google_drive",
+      "chunks": 9,
+      "sample_metadata": {
+        "source": "https://drive.google.com/file/d/1kTHh25fEfMSsTLpl24lY_ZJMOauUS5VT/view",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "title": "SBJ.2.8.21.Wells.Concolino.impostor.syndrome.pdf",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "size": "137841",
+        "full_path": "Wells Quest Content/Trade.Journals/SBJ.2.8.21.Wells.Concolino.impostor.syndrome.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1k_aORclYqvnNIcqDDQ08iBsk5-GUOqVO",
+      "type": "google_drive",
+      "chunks": 139,
+      "sample_metadata": {
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/2022.JBP.Gray2022_Article_HowCanOrganizationalLeadersHel.pdf",
+        "title": "2022.JBP.Gray2022_Article_HowCanOrganizationalLeadersHel.pdf",
+        "size": "930962",
+        "page": 0,
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1k_aORclYqvnNIcqDDQ08iBsk5-GUOqVO/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1p-E9ZefGs6EyHk1IP9E_9OwGbQgRtlNG",
+      "type": "google_drive",
+      "chunks": 265,
+      "sample_metadata": {
+        "full_path": "Wells Quest Content/Articles/Foo.Wells.Walker.2015.JCA.international.pdf",
+        "page": 0,
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1p-E9ZefGs6EyHk1IP9E_9OwGbQgRtlNG/view",
+        "size": "417493",
+        "title": "Foo.Wells.Walker.2015.JCA.international.pdf"
+      }
+    },
+    {
+      "source": "Google Drive File: 1q18q30AjDxm1PLsQuOaYV42_lF4eC3DL",
+      "type": "google_drive",
+      "chunks": 148,
+      "sample_metadata": {
+        "page": 0,
+        "title": "2023.JBP.Grayetal.Org.Leaders.pdf",
+        "size": "969401",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "source": "https://drive.google.com/file/d/1q18q30AjDxm1PLsQuOaYV42_lF4eC3DL/view",
+        "full_path": "Wells Quest Content/Articles/2023.JBP.Grayetal.Org.Leaders.pdf",
+        "owner": "emily@loopfire.ai"
+      }
+    },
+    {
+      "source": "Google Drive File: 1vhrkI1IycaFj-v3w6Xvp5-IeHpO36PQP",
+      "type": "google_drive",
+      "chunks": 354,
+      "sample_metadata": {
+        "title": "Wells.Dissertation.2012.Social_cognitive_intentions_of.pdf",
+        "full_path": "Wells Quest Content/Articles/Wells.Dissertation.2012.Social_cognitive_intentions_of.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "2876804",
+        "owner": "emily@loopfire.ai",
+        "source": "https://drive.google.com/file/d/1vhrkI1IycaFj-v3w6Xvp5-IeHpO36PQP/view",
+        "page": 0
+      }
+    },
+    {
+      "source": "Google Drive File: 1w98XYnEtcMbwMggPAPQyY1aQ7A_79ZCT",
+      "type": "google_drive",
+      "chunks": 89,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "full_path": "Wells Quest Content/Articles/jsm.Burton.Welty.Wells.2017.pdf",
+        "title": "jsm.Burton.Welty.Wells.2017.pdf",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "size": "187610",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1w98XYnEtcMbwMggPAPQyY1aQ7A_79ZCT/view"
+      }
+    },
+    {
+      "source": "Google Drive File: 1wciREjDICfGpFrlYN6KDWqfU3n6fWetu",
+      "type": "google_drive",
+      "chunks": 129,
+      "sample_metadata": {
+        "owner": "emily@loopfire.ai",
+        "authorized_identities": "['support@loopfire.ai', 'emily@loopfire.ai']",
+        "full_path": "Wells Quest Content/Articles/2023.JIIA.Berg.etal.The Policy Discourse of Name Image and Likeness in College Athl.pdf",
+        "page": 0,
+        "source": "https://drive.google.com/file/d/1wciREjDICfGpFrlYN6KDWqfU3n6fWetu/view",
+        "size": "472061",
+        "title": "2023.JIIA.Berg.etal.The Policy Discourse of Name Image and Likeness in College Athl.pdf"
+      }
+    },
+    {
+      "source": "PDF: 8.2.24.Our.(In)visible.Work.FINAL.pdf",
+      "type": "pdf",
+      "chunks": 335,
+      "sample_metadata": {
+        "source_file": "8.2.24.Our.(In)visible.Work.FINAL.pdf",
+        "moddate": "2024-08-05T09:23:59-04:00",
+        "page_label": "1",
+        "total_pages": 150,
+        "file_type": ".pdf",
+        "creator": "Microsoft® Word for Microsoft 365",
+        "author": "mary lippitt",
+        "source": "data\\8.2.24.Our.(In)visible.Work.FINAL.pdf",
+        "producer": "Microsoft® Word for Microsoft 365",
+        "creationdate": "2024-08-05T09:23:59-04:00",
+        "page": 0
+      }
+    }
+  ]
+}

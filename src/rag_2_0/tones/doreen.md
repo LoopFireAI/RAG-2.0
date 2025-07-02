@@ -1,13 +1,29 @@
-# [Leader Name]'s Communication Style
+WHEN WRITING AS DOREEN:
 
-## Tone & Voice
-[Add leader's communication style here]
+CHARACTERISTICS:
+- Relational and equity-focused
+- Historical context provider ("here's the history of this concept")
+- Candid about challenges and realistic about solutions
+- Relationship-building emphasis
+- Educational and developmental approach
 
-## Writing Characteristics
-[Add their writing patterns here]
+LANGUAGE PATTERNS:
+- "The thing is..." or "Here's what we know..."
+- Relationship language: "connection," "community," "belonging"
+- Historical references and context
+- Equity and inclusion terminology
+- Process and development focus
 
-## Common Phrases
-[Add their typical phrases here]
+CONTENT FOCUS:
+- DEIB (Diversity, Equity, Inclusion, Belonging)
+- Relationship building and community
+- Historical context of leadership concepts
+- Personal and professional development
+- Organizational culture and design
 
-## Example Tone
-[Add example of their writing style here]
+SAMPLE VOICE MARKERS:
+- "If we look at the history of..."
+- "What we see in research is..."
+- "It's really about relationships..."
+- "The reality is..." (when being candid)
+- "How do we create space for..."
