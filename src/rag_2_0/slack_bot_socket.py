@@ -146,7 +146,7 @@ def process_rag_query(query: str, user_id: str, user_name: str = "") -> str:
 
 @app.event("app_mention")
 def handle_mention(event, say, client, ack):
-    """Handle @mentions of the bot"""
+    """Handle @mentions of the bot, maintaining thread context"""
     ack()
     logger.info(f"🎯 App mention handler triggered!")
     
@@ -154,6 +154,7 @@ def handle_mention(event, say, client, ack):
     user = event.get("user")
     channel = event.get("channel")
     ts = event.get("ts")
+    thread_ts = event.get("thread_ts", ts)  # If not a reply, thread_ts is ts
     
     logger.info(f"📝 Original message: '{user_message}'")
     logger.info(f"👤 User: {user}")
@@ -165,7 +166,6 @@ def handle_mention(event, say, client, ack):
     logger.info(f"🧹 Cleaned message: '{cleaned_message}'")
     
     if cleaned_message:
-        # User asked a specific question
         try:
             # Add eyes reaction to show we're processing
             try:
@@ -177,17 +177,104 @@ def handle_mention(event, say, client, ack):
                 logger.info("👀 Added eyes reaction")
             except Exception as e:
                 logger.warning(f"Could not add reaction: {e}")
-            
+
             logger.info(f"Processing question from {user}: {cleaned_message[:50]}...")
-            response = process_rag_query(cleaned_message, user)
-            
+
+            # --- NEW: Fetch thread history for context ---
+            try:
+                thread_messages = []
+                if thread_ts:
+                    # Fetch all messages in the thread
+                    replies = client.conversations_replies(
+                        channel=channel,
+                        ts=thread_ts,
+                        limit=50  # Slack's max is 100, but 50 is usually enough
+                    )
+                    thread_messages = replies.get("messages", [])
+                    logger.info(f"Fetched {len(thread_messages)} messages from thread for context.")
+                else:
+                    # Not in a thread, just use the current message
+                    thread_messages = [event]
+            except Exception as e:
+                logger.error(f"Error fetching thread history: {e}")
+                thread_messages = [event]
+
+            # Build message history for RAG agent
+            from langchain_core.messages import HumanMessage, AIMessage
+            message_history = []
+            bot_user_id = None
+            try:
+                auth_response = client.auth_test()
+                bot_user_id = auth_response["user_id"]
+            except Exception as e:
+                logger.warning(f"Could not get bot user ID: {e}")
+
+            for msg in thread_messages:
+                text = msg.get("text", "").strip()
+                # Remove bot mention from each message
+                text = " ".join([word for word in text.split() if not word.startswith("<@")]).strip()
+                if not text:
+                    continue
+                if msg.get("user") == bot_user_id or msg.get("bot_id"):
+                    # Message from the bot
+                    message_history.append(AIMessage(content=text))
+                else:
+                    # Message from a human
+                    message_history.append(HumanMessage(content=text))
+
+            # If for some reason message_history is empty, fallback to just the cleaned message
+            if not message_history:
+                message_history = [HumanMessage(content=cleaned_message)]
+
+            # --- END NEW ---
+
+            # Pass full message history to RAG agent
+            def process_rag_query_with_history(messages, user_id, user_name=""):
+                try:
+                    initial_state = {"messages": messages}
+                    result = rag_graph.invoke(initial_state)
+                    response = ""
+                    if result.get("messages"):
+                        for message in reversed(result["messages"]):
+                            if hasattr(message, 'content'):
+                                content = message.content
+                            elif isinstance(message, dict):
+                                content = message.get('content', '')
+                            else:
+                                content = str(message)
+                            if (content and 
+                                "Rate this response" not in content and 
+                                "📝" not in content[:10] and
+                                "Choose Your Voice" not in content and
+                                len(content) > 100):
+                                response = content
+                                break
+                        if not response and len(result["messages"]) > 1:
+                            first_msg = result["messages"][1] if len(result["messages"]) > 1 else result["messages"][0]
+                            if hasattr(first_msg, 'content'):
+                                response = first_msg.content
+                            elif isinstance(first_msg, dict):
+                                response = first_msg.get('content', '')
+                            else:
+                                response = str(first_msg)
+                    if not response:
+                        response = "I couldn't generate a response for your query."
+                    response = clean_response_for_slack(response)
+                    logger.info(f"Query from {user_id} ({user_name}): '{cleaned_message[:50]}...' -> Response length: {len(response)}")
+                    logger.info(f"Sources included in response: {'Sources' in response}")
+                    return response
+                except Exception as e:
+                    logger.error(f"Error in RAG processing: {e}")
+                    return "Sorry, I encountered an error processing your request. Please try again."
+
+            response = process_rag_query_with_history(message_history, user, "")
+
             # Reply in thread
             say(
                 text=response,
-                thread_ts=ts  # This makes it reply in thread
+                thread_ts=thread_ts  # Always reply in thread
             )
-            
-            # Just remove eyes reaction - let USER add checkmark to trigger feedback
+            # Remove eyes reaction
             try:
                 client.reactions_remove(
                     channel=channel,
@@ -197,10 +284,8 @@ def handle_mention(event, say, client, ack):
                 logger.info("👀 Removed eyes reaction - ready for user feedback")
             except Exception as e:
                 logger.warning(f"Could not remove reaction: {e}")
-            
         except Exception as e:
             logger.error(f"Error processing mention: {e}")
-            # Remove eyes reaction and add error reaction
             try:
                 client.reactions_remove(
                     channel=channel,
@@ -214,28 +299,16 @@ def handle_mention(event, say, client, ack):
                 )
             except:
                 pass
-            
             say(
                 text="Sorry, I encountered an error processing your request. Please try again.",
-                thread_ts=ts
+                thread_ts=thread_ts
             )
     else:
-        # User just mentioned the bot without a question
         logger.info(f"User {user} mentioned bot without question - sending greeting")
-        greeting = """👋 Hi there! I'm your Wells Leadership Research assistant.
-
-I can help you explore insights from our extensive collection of leadership research papers. Just ask me questions like:
-
-• "What makes an effective leader?"
-• "How do leaders build trust?"  
-• "What are the key leadership competencies?"
-• "Tell me about transformational leadership"
-
-What would you like to know about leadership? 🚀"""
-        
+        greeting = """👋 Hi there! I'm your Wells Leadership Research assistant.\n\nI can help you explore insights from our extensive collection of leadership research papers. Just ask me questions like:\n\n• \"What makes an effective leader?\"\n• \"How do leaders build trust?\"  \n• \"What are the key leadership competencies?\"\n• \"Tell me about transformational leadership\"\n\nWhat would you like to know about leadership? 🚀"""
         say(
             text=greeting,
-            thread_ts=ts  # Reply in thread even for greetings
+            thread_ts=thread_ts
         )
 
 @app.command("/wells")
@@ -621,15 +694,119 @@ def handle_feedback_rating(ack, body, client, respond):
         })
 
 @app.event("message")
-def handle_message_events(body, logger):
-    """Handle other message events (optional)"""
-    logger.info(f"📩 Message event received: {body}")
+def handle_message_events(event, say, client, logger):
+    """Handle follow-up messages in threads where the bot has already replied."""
+    logger.info(f"📩 Message event received: {event}")
 
-@app.middleware
-def log_request(logger, body, next):
-    """Log all incoming requests for debugging"""
-    logger.info(f"🔍 Incoming event: {body.get('type', 'unknown')} - {body}")
-    next()
+    # Only process if this is a thread reply (has thread_ts and it's not a bot message)
+    thread_ts = event.get("thread_ts")
+    ts = event.get("ts")
+    channel = event.get("channel")
+    user = event.get("user")
+    text = event.get("text", "").strip()
+    subtype = event.get("subtype")
+
+    # Ignore bot messages and message changes
+    if subtype is not None:
+        logger.info(f"Ignoring message with subtype: {subtype}")
+        return
+    if not thread_ts or thread_ts == ts:
+        # Not a thread reply
+        return
+    if not text:
+        return
+
+    # Fetch thread history
+    try:
+        replies = client.conversations_replies(
+            channel=channel,
+            ts=thread_ts,
+            limit=50
+        )
+        thread_messages = replies.get("messages", [])
+        logger.info(f"Fetched {len(thread_messages)} messages from thread for context.")
+    except Exception as e:
+        logger.error(f"Error fetching thread history: {e}")
+        return
+
+    # Get bot user ID
+    bot_user_id = None
+    try:
+        auth_response = client.auth_test()
+        bot_user_id = auth_response["user_id"]
+    except Exception as e:
+        logger.warning(f"Could not get bot user ID: {e}")
+        return
+
+    # Only respond if the bot has already replied in this thread
+    bot_has_replied = any(
+        (msg.get("user") == bot_user_id or msg.get("bot_id"))
+        for msg in thread_messages if msg.get("ts") != ts
+    )
+    if not bot_has_replied:
+        logger.info("Bot has not replied in this thread yet. Ignoring message.")
+        return
+
+    # Build message history for RAG agent
+    from langchain_core.messages import HumanMessage, AIMessage
+    message_history = []
+    for msg in thread_messages:
+        msg_text = msg.get("text", "").strip()
+        # Remove bot mention from each message
+        msg_text = " ".join([word for word in msg_text.split() if not word.startswith("<@")]).strip()
+        if not msg_text:
+            continue
+        if msg.get("user") == bot_user_id or msg.get("bot_id"):
+            message_history.append(AIMessage(content=msg_text))
+        else:
+            message_history.append(HumanMessage(content=msg_text))
+    if not message_history:
+        message_history = [HumanMessage(content=text)]
+
+    # Process with RAG agent
+    def process_rag_query_with_history(messages, user_id, user_name=""):
+        try:
+            initial_state = {"messages": messages}
+            result = rag_graph.invoke(initial_state)
+            response = ""
+            if result.get("messages"):
+                for message in reversed(result["messages"]):
+                    if hasattr(message, 'content'):
+                        content = message.content
+                    elif isinstance(message, dict):
+                        content = message.get('content', '')
+                    else:
+                        content = str(message)
+                    if (content and 
+                        "Rate this response" not in content and 
+                        "📝" not in content[:10] and
+                        "Choose Your Voice" not in content and
+                        len(content) > 100):
+                        response = content
+                        break
+                if not response and len(result["messages"]) > 1:
+                    first_msg = result["messages"][1] if len(result["messages"]) > 1 else result["messages"][0]
+                    if hasattr(first_msg, 'content'):
+                        response = first_msg.content
+                    elif isinstance(first_msg, dict):
+                        response = first_msg.get('content', '')
+                    else:
+                        response = str(first_msg)
+            if not response:
+                response = "I couldn't generate a response for your query."
+            response = clean_response_for_slack(response)
+            logger.info(f"Query from {user_id}: '{text[:50]}...' -> Response length: {len(response)}")
+            logger.info(f"Sources included in response: {'Sources' in response}")
+            return response
+        except Exception as e:
+            logger.error(f"Error in RAG processing: {e}")
+            return "Sorry, I encountered an error processing your request. Please try again."
+
+    response = process_rag_query_with_history(message_history, user, "")
+    say(
+        text=response,
+        thread_ts=thread_ts
+    )
 
 # Add comprehensive event debugging
 @app.event({"type": "reaction_added"})
