@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
+from langgraph.checkpoint.memory import InMemorySaver
 
 load_dotenv()
 
@@ -684,6 +685,7 @@ def create_rag_graph():
     """Create the RAG workflow graph."""
 
     # Create workflow
+    checkpointer = InMemorySaver()
     workflow = StateGraph(RAGState)
 
     # Add nodes

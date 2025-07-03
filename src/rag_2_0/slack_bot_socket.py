@@ -85,6 +85,78 @@ def clean_response_for_slack(response: str) -> str:
     
     return response
 
+
+def get_thread_id(event):
+    # Use thread_td if present, otherwise ts (for new threads)
+    return event.get("thread_ts") or event.get("ts")
+
+def fetch_thread_history(client, channel, thread_ts):
+    # Returns a list of Slack messages in the thread
+    response = client.conversations_replies(channel=channel, ts=thread_ts)
+    return response.get("messages", [])
+
+from langchain_core.messages import HumanMessage, AIMessage
+
+def slack_to_langchain_messages(slack_messages, bot_user_id):
+    messages = []
+    for msg in slack_messages:
+        content = msg.get("text", "")
+        if msg.get("user") == bot_user_id:
+            messages.append(AIMessage(content=content))
+        else:
+            messages.append(HumanMessage(content=content))
+    return messages
+
+def process_rag_query_slack(event, client, bot_user_id, user_name=""):
+    """
+    Process a Slack event through the RAG system, using full thread history for memory.
+    """
+    try:
+        channel = event["channel"]
+        thread_id = get_thread_id(event)
+        slack_messages = fetch_thread_history(client, channel, thread_id)
+        messages = slack_to_langchain_messages(slack_messages, bot_user_id)
+        initial_state = {"messages": messages}
+        config = {"configurable": {"thread_id": thread_id}}
+        result = rag_graph.invoke(initial_state, config)
+
+        # Extract the actual response (skip feedback prompts)
+        response = ""
+        if result.get("messages"):
+            for message in reversed(result["messages"]):
+                if hasattr(message, 'content'):
+                    content = message.content
+                elif isinstance(message, dict):
+                    content = message.get('content', '')
+                else:
+                    content = str(message)
+                if (content and 
+                    "Rate this response" not in content and 
+                    "📝" not in content[:10] and
+                    "Choose Your Voice" not in content and
+                    len(content) > 100):
+                    response = content
+                    break
+            if not response and len(result["messages"]) > 1:
+                first_msg = result["messages"][1] if len(result["messages"]) > 1 else result["messages"][0]
+                if hasattr(first_msg, 'content'):
+                    response = first_msg.content
+                elif isinstance(first_msg, dict):
+                    response = first_msg.get('content', '')
+                else:
+                    response = str(first_msg)
+        if not response:
+            response = "I couldn't generate a response for your query."
+
+        response = clean_response_for_slack(response)
+        logger.info(f"Query from Slack user ({user_name}): '{messages[-1].content[:50] if messages else ''}...' -> Response length: {len(response)}")
+        logger.info(f"Sources included in response: {'Sources' in response}")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error in RAG processing (Slack): {e}")
+        return "Sorry, I encountered an error processing your request. Please try again."
+
 def process_rag_query(query: str, user_id: str, user_name: str = "") -> str:
     """Process a query through the RAG system"""
     try:
@@ -179,7 +251,11 @@ def handle_mention(event, say, client, ack):
                 logger.warning(f"Could not add reaction: {e}")
             
             logger.info(f"Processing question from {user}: {cleaned_message[:50]}...")
-            response = process_rag_query(cleaned_message, user)
+            global BOT_USER_ID
+            if not BOT_USER_ID:
+                auth_response = client.auth_test()
+                BOT_USER_ID = auth_response["user_id"]
+            response = process_rag_query_slack(event, client, BOT_USER_ID, user_name=user)
             
             # Reply in thread
             say(
@@ -332,7 +408,7 @@ If this doesn't work, check that the Slack app has:
     
     try:
         logger.info(f"Processing /wells command from {user_name}: {user_query[:50]}...")
-        response = process_rag_query(user_query, user_id, user_name)
+        response = process_rag_query_slack(command, app.client, BOT_USER_ID, user_name=user_name)
         
         respond({
             "response_type": "in_channel",
