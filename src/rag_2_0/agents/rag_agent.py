@@ -163,12 +163,55 @@ def generate_social_media_post(state: RAGState) -> RAGState:
 {context}
 
 📱 SOCIAL MEDIA POST REQUIREMENTS:
-- **Hook** (1-2 sentences): Grab attention with a compelling insight or question
-- **Value** (2-3 insights): Share the most impactful takeaways from the research  
-- **Engagement** (1 question): End with a thought-provoking question for discussion
-- **Style**: Conversational yet authoritative, {detected_leader}'s authentic voice
-- **Length**: Under 150 words for optimal social media engagement
-- **Tone**: {detected_leader}'s characteristic style with actionable insights
+- Respond in short paragraphs. Please don't use bullet points in responses.
+- Make sure the response is both detailed and concise. Use a call to action at the end of our captions inviting the audience to follow, read, and engage with future material.
+- Call to action preferences: 
+Awareness & Dialogue 
+    - Pause and name the work that often goes unnoticed. 
+    - Acknowledge the invisible, amplify the impact. 
+    - Bring this to your next team meeting. 
+    - Share this with someone doing the work no one talks about.  
+Explore & Learn More 
+    - Reframe what counts as work. Start here. 
+    - Interested in learning more? Read the article here. 
+    - Follow along for more conversations that shift perspective. 
+    - The work doesn’t stop here, keep reading! 
+Action & Impact 
+    - Support the work behind the work. 
+    - Ready to make change at work? Let’s talk.
+
+- Use hashtags at the end of the post. 
+
+Example of LinkedIn post: 
+"What if the future of leadership isn’t about knowing all the answers, but asking better questions?
+
+As AI reshapes the workplace, Ashley Lee challenges us to lead with intention, not urgency. In her latest piece, Shaping the Future of Work: Strategic Leadership in the Age of AI, she reminds us that technology doesn’t replace human connection, it requires more of it.
+
+From addressing bias and protecting data to supporting teams through uncertainty, this article explores how thoughtful, people-first leadership can turn AI from a disruption into an opportunity.
+“AI is not here to take away what makes us human. It’s here to help us become even better at it.”
+Read the full article to explore how curiosity, care, and clarity can guide us forward.
+hashtag#Leadership hashtag#FutureOfWork hashtag#AI hashtag#HumanCenteredLeadership"
+
+Example of Instagram post: 
+"Why do so many of us struggle to rest without guilt?
+In this week’s question, Dr. Janelle Wells unpacks what drives our discomfort with downtime and why this mindset might be working against us.
+Follow WellsQuest for thoughtful conversations that help reframe how we work and live.
+#WellsQuest #QuestionOfTheWeek #DrJanelleWells #WellbeingAtWork #WorkRedefined"
+
+Platform specific guidelines: 
+LinkedIn: Thought leadership and professional storytelling with a focus on workplace equity or insights. Posts are reflective, research-backed, and cleanly formatted.  
+ 
+
+X (Twitter): Concise, high-impact, and timely. We use bold statements or thred to amplify insights. Least engagement and reach with this platform and need to get more active in sharing industry insights and conversations. 
+ 
+
+Instagram: Visual-first and emotionally resonant/warm. We use reels, carousels, quotes, and definition graphics to educate and connect. Captions are warm, concise, and reflective. 
+  
+
+Newsletters: Curated, slower-paced content with personal insights, key updates, and invitations to engage more deeply with WellsQuest’s work.  
+  
+
+Other (Facebook): Community-forward and personal tone, very similar to Instagram.
 
 📝 FORMAT:
 Create a single, cohesive post (not sections) that flows naturally while incorporating these elements.
