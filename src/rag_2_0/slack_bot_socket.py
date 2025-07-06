@@ -245,8 +245,7 @@ def handle_mention(event, say, client, ack):
                             if (content and 
                                 "Rate this response" not in content and 
                                 "📝" not in content[:10] and
-                                "Choose Your Voice" not in content and
-                                len(content) > 100):
+                                len(content) > 50):
                                 response = content
                                 break
                         if not response and len(result["messages"]) > 1:

@@ -291,14 +291,41 @@ def extract_query(state: RAGState) -> RAGState:
     is_new_conversation = len(messages) == 1
 
     if messages:
-        last_message = messages[-1]
-        # Handle both dict and LangChain message formats
-        if hasattr(last_message, 'content'):
-            query = last_message.content
-        elif isinstance(last_message, dict):
-            query = last_message.get('content', '')
-        else:
-            query = str(last_message)
+        # Look for the actual query (not just voice selections)
+        query = None
+        original_query = None
+        
+        # Process messages to find the real query and voice selections
+        for i, message in enumerate(messages):
+            if hasattr(message, 'content'):
+                content = message.content.strip()
+            elif isinstance(message, dict):
+                content = message.get('content', '').strip()
+            else:
+                content = str(message).strip()
+            
+            # Skip voice selection responses
+            if content.lower() in ["janelle", "doreen", "default"]:
+                continue
+                
+            # Skip bot messages asking for voice
+            if "Choose Your Voice" in content:
+                continue
+                
+            # This should be the actual query
+            if content and len(content) > 10:  # Reasonable query length
+                query = content
+                break
+        
+        # If no proper query found, use the last message
+        if not query:
+            last_message = messages[-1]
+            if hasattr(last_message, 'content'):
+                query = last_message.content
+            elif isinstance(last_message, dict):
+                query = last_message.get('content', '')
+            else:
+                query = str(last_message)
     else:
         query = "What is machine learning?"
 
@@ -592,7 +619,37 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
 
     logger.debug(f"elicit_leader_and_tone called with {len(messages)} messages, waiting_for_leader={waiting_for_leader}")
 
-    # If we're already waiting for leader input, process the user's response
+    # Check if the most recent message is a voice selection response
+    if len(messages) >= 1:
+        last_message = messages[-1]
+        if hasattr(last_message, 'content'):
+            last_content = last_message.content.strip().lower()
+        elif isinstance(last_message, dict):
+            last_content = last_message.get('content', '').strip().lower()
+        else:
+            last_content = str(last_message).strip().lower()
+        
+        # Check if this looks like a voice selection
+        if last_content in ["janelle", "doreen", "default"]:
+            logger.debug(f"Processing voice selection: '{last_content}'")
+            
+            # Map user choice to leader name
+            detected_leader = last_content
+            tone_profile = load_tone_profile(detected_leader)
+            
+            # Use original query if available, otherwise use current query
+            original_query = state.get("original_query", query)
+            
+            logger.debug(f"Leader selected: {detected_leader}, proceeding with query: '{original_query[:50]}...'")
+            
+            return {
+                "detected_leader": detected_leader,
+                "tone_profile": tone_profile,
+                "waiting_for_leader": False,
+                "query": original_query
+            }
+    
+    # Legacy handling: If we're explicitly waiting for leader input, process the user's response
     if waiting_for_leader and len(messages) >= 2:
         # Look for a leader selection prompt in previous messages
         for msg in messages[:-1]:
