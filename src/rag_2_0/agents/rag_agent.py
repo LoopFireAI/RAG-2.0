@@ -355,8 +355,16 @@ def retrieve_documents(state: RAGState) -> RAGState:
                 # This is a conceptual boost - in practice, you'd adjust the similarity scores
                 doc.metadata['feedback_boost'] = boost_factor
 
-    documents = [doc.page_content for doc in results]
-    context = "\n\n".join(documents)
+    # Format documents with clear separators for better LLM processing
+    formatted_docs = []
+    for i, doc in enumerate(results, 1):
+        doc_content = doc.page_content.strip()
+        # Add document separator with metadata if available
+        doc_title = doc.metadata.get('title', f'Document {i}')
+        formatted_doc = f"=== {doc_title} ===\n{doc_content}"
+        formatted_docs.append(formatted_doc)
+    
+    context = "\n\n".join(formatted_docs)
 
     # Extract sources and metadata for feedback
     sources = []
@@ -456,11 +464,12 @@ def generate_response(state: RAGState) -> RAGState:
    - End with {detected_leader}'s motivational style
 
 📝 QUALITY STANDARDS:
-- Every point must be substantiated by the knowledge base content
-- Use specific examples, not generic statements  
+- SYNTHESIZE information from the knowledge base - don't just quote or excerpt
+- Transform raw research into {detected_leader}'s authentic insights and perspective
+- Use specific examples and data points, but frame them in your voice
 - Maintain {detected_leader}'s authentic voice throughout
 - Ensure practical applicability of insights
-- Include precise details and avoid vague generalizations
+- Create original value-added commentary, not just information regurgitation
 
 🎤 **Your Response as {detected_leader.upper()}:**"""
     else:
@@ -599,7 +608,7 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
 
                 logger.debug(f"Processing leader choice: '{choice}'")
 
-                # Map user choice to leader name
+                # Map user choice to leader name (case-insensitive)
                 leader_mapping = {"janelle": "janelle", "doreen": "doreen", "default": "default"}
                 detected_leader = leader_mapping.get(choice, "default")
 
