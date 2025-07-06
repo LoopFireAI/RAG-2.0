@@ -382,7 +382,8 @@ def retrieve_documents(state: RAGState) -> RAGState:
                 # This is a conceptual boost - in practice, you'd adjust the similarity scores
                 doc.metadata['feedback_boost'] = boost_factor
 
-    # Format documents with clear separators for better LLM processing
+    # Extract document content and format with clear separators for better LLM processing
+    documents = [doc.page_content for doc in results]
     formatted_docs = []
     for i, doc in enumerate(results, 1):
         doc_content = doc.page_content.strip()
