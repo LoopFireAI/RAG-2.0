@@ -102,13 +102,34 @@ def detect_social_media_request(state: RAGState) -> RAGState:
     """Detect if the query is requesting a social media post."""
     query = state["query"].lower()
 
-    # Keywords that might indicate a social media post request
+    # Comprehensive keyword detection for social media posts
     social_media_keywords = [
         "tweet", "twitter", "post", "social media", "linkedin", "facebook",
-        "instagram", "thread", "threads", "make a post", "create a post"
+        "instagram", "thread", "threads", "make a post", "create a post",
+        "linkedin post", "share on", "caption", "social", "engagement",
+        "hashtag", "viral", "content", "share this", "post about",
+        "social media post", "write a post", "create content"
     ]
 
-    is_social_media = any(keyword in query for keyword in social_media_keywords)
+    # Multi-word phrase detection (handles "linkedin post" at end of sentence)
+    social_media_phrases = [
+        "linkedin post", "twitter post", "facebook post", "instagram post",
+        "social media post", "make a post", "create a post", "write a post",
+        "give me a post", "generate a post", "post for linkedin", "post for twitter"
+    ]
+    
+    # Check for explicit social media keywords anywhere in query
+    has_social_keywords = any(keyword in query for keyword in social_media_keywords)
+    
+    # Check for multi-word phrases that might be split across query
+    has_social_phrases = any(phrase in query for phrase in social_media_phrases)
+    
+    # Additional pattern detection for requests ending with social media terms
+    ends_with_social = query.strip().endswith(('post', 'linkedin post', 'tweet', 'content'))
+    
+    is_social_media = has_social_keywords or has_social_phrases or ends_with_social
+    
+    logger.info(f"🔍 Social media detection: query='{query}', detected={is_social_media}")
     return {"is_social_media": is_social_media}
 
 def load_tone_profile(leader_name: str) -> str:
@@ -161,6 +182,13 @@ def generate_social_media_post(state: RAGState) -> RAGState:
 
 📊 KNOWLEDGE BASE CONTENT:
 {context}
+
+🚫 CRITICAL REQUIREMENTS:
+- DO NOT start with disclaimers or limitations
+- DO NOT use generic corporate language
+- DO NOT provide vague or surface-level insights
+- MUST extract specific, actionable insights from the knowledge base
+- MUST create engaging, authentic content that provides real value
 
 📱 SOCIAL MEDIA POST REQUIREMENTS:
 - Respond in short paragraphs. Please don't use bullet points in responses.
@@ -275,11 +303,19 @@ def grade_documents(state: RAGState) -> RAGState:
     query = state["query"]
     context = state["context"]
 
+    # If no context or very limited context, default to "yes" to prevent blocking
+    if not context or len(context.strip()) < 50:
+        logger.warning(f"⚠️ Limited context ({len(context)} chars), defaulting to 'yes' grade")
+        return {"grade": "yes"}
+
     prompt = GRADE_PROMPT.format(question=query, context=context)
     response = llm.invoke([HumanMessage(content=prompt)])
 
-    # Extract the grade from the response
+    # Extract the grade from the response - be more permissive
     grade = "yes" if "yes" in response.content.lower() else "no"
+    
+    # Log grading decision for debugging
+    logger.info(f"📊 Document grading: query='{query[:50]}...', grade={grade}")
 
     return {"grade": grade}
 
@@ -293,10 +329,9 @@ def extract_query(state: RAGState) -> RAGState:
     if messages:
         # Look for the actual query (not just voice selections)
         query = None
-        original_query = None
         
         # Process messages to find the real query and voice selections
-        for i, message in enumerate(messages):
+        for message in messages:
             if hasattr(message, 'content'):
                 content = message.content.strip()
             elif isinstance(message, dict):
@@ -361,11 +396,28 @@ def retrieve_documents(state: RAGState) -> RAGState:
     except ImportError:
         feedback_storage = None
 
-    # Use LangChain Chroma similarity search
-    results = vector_store.similarity_search(
-        query,
-        k=int(os.getenv("TOP_K", 3))
-    )
+    # Use LangChain Chroma similarity search with expanded retrieval
+    top_k = int(os.getenv("TOP_K", 5))  # Increase default from 3 to 5
+    results = vector_store.similarity_search(query, k=top_k)
+    
+    # Fallback search with relaxed terms if initial results are limited
+    if len(results) < top_k // 2:  # If we get less than half expected results
+        # Extract key terms from query and try broader search
+        query_terms = query.lower().split()
+        important_terms = [term for term in query_terms if len(term) > 3 and term not in ['what', 'how', 'why', 'when', 'where', 'give', 'make', 'create']]
+        
+        if important_terms:
+            # Try search with just key terms
+            broader_query = ' '.join(important_terms[:3])  # Use top 3 key terms
+            logger.info(f"🔍 Fallback search with broader query: '{broader_query}'")
+            additional_results = vector_store.similarity_search(broader_query, k=top_k)
+            
+            # Merge results, avoiding duplicates
+            seen_content = {doc.page_content for doc in results}
+            for doc in additional_results:
+                if doc.page_content not in seen_content and len(results) < top_k:
+                    results.append(doc)
+                    seen_content.add(doc.page_content)
 
     # Apply feedback-based reranking if available
     if feedback_storage and results:
@@ -828,10 +880,16 @@ def create_rag_graph():
     # Full RAG pipeline
     workflow.add_edge("retrieve", "grade_documents")
 
-    # Branch based on social media flag
+    # Branch based on social media flag with debugging
+    def routing_decision(state):
+        is_social = state.get("is_social_media", False)
+        decision = "generate_social_media" if is_social else "generate"
+        logger.info(f"🔀 Routing decision: is_social_media={is_social}, route={decision}")
+        return decision
+    
     workflow.add_conditional_edges(
         "grade_documents",
-        lambda x: "generate_social_media" if x.get("is_social_media", False) else "generate",
+        routing_decision,
         {
             "generate_social_media": "generate_social_media",
             "generate": "generate"
