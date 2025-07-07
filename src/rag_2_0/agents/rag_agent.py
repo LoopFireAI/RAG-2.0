@@ -180,6 +180,12 @@ def generate_social_media_post(state: RAGState) -> RAGState:
 📋 QUERY TO ADDRESS:
 {query}
 
+🎯 RESPONSE STRUCTURE REQUIRED:
+Based on the query structure, you must provide a direct answer that addresses the specific question format. 
+- If asked for "3 things" - provide exactly 3 specific points
+- If asked about "balance" - focus specifically on work-life balance concepts
+- If asked about "professionals get wrong" - identify specific mistakes or misconceptions
+
 📊 KNOWLEDGE BASE CONTENT:
 {context}
 
@@ -189,6 +195,9 @@ def generate_social_media_post(state: RAGState) -> RAGState:
 - DO NOT provide vague or surface-level insights
 - MUST extract specific, actionable insights from the knowledge base
 - MUST create engaging, authentic content that provides real value
+- MUST directly answer the specific question asked
+- If the query asks for "3 things" or numbered items, provide exactly that structure
+- If the retrieved content doesn't directly address the question, synthesize relevant insights that do
 
 📱 SOCIAL MEDIA POST REQUIREMENTS:
 - Respond in short paragraphs. Please don't use bullet points in responses.
@@ -220,6 +229,19 @@ From addressing bias and protecting data to supporting teams through uncertainty
 “AI is not here to take away what makes us human. It’s here to help us become even better at it.”
 Read the full article to explore how curiosity, care, and clarity can guide us forward.
 hashtag#Leadership hashtag#FutureOfWork hashtag#AI hashtag#HumanCenteredLeadership"
+
+Example of LinkedIn post for "3 things" query: 
+"Three misconceptions about work-life balance that hold professionals back:
+
+First, thinking balance means equal time allocation. Balance isn't about perfect 50-50 splits but about intentional choices that align with your values and current season of life.
+
+Second, believing you need to achieve balance alone. The most successful professionals build systems and seek support rather than trying to juggle everything solo.
+
+Third, treating balance as a destination rather than a dynamic practice. What works today might not work next month, and that's completely normal.
+
+True balance comes from self-awareness, not self-sacrifice. What's one misconception you've let go of?
+
+hashtag#WorkLifeBalance hashtag#ProfessionalDevelopment hashtag#Leadership"
 
 Example of Instagram post: 
 "Why do so many of us struggle to rest without guilt?
@@ -399,6 +421,27 @@ def retrieve_documents(state: RAGState) -> RAGState:
     # Use LangChain Chroma similarity search with expanded retrieval
     top_k = int(os.getenv("TOP_K", 5))  # Increase default from 3 to 5
     results = vector_store.similarity_search(query, k=top_k)
+    
+    # Extract key topic from query for targeted search
+    query_lower = query.lower()
+    key_topics = []
+    if "balance" in query_lower:
+        key_topics.append("work-life balance")
+    if "leadership" in query_lower:
+        key_topics.append("leadership")
+    if "professional" in query_lower:
+        key_topics.append("professional development")
+    
+    # If we have key topics and initial results are limited, do targeted search
+    if key_topics and len(results) < top_k:
+        for topic in key_topics:
+            topic_results = vector_store.similarity_search(topic, k=top_k//2)
+            seen_content = {doc.page_content for doc in results}
+            for doc in topic_results:
+                if doc.page_content not in seen_content and len(results) < top_k:
+                    results.append(doc)
+                    seen_content.add(doc.page_content)
+        logger.info(f"🎯 Added targeted search results for topics: {key_topics}")
     
     # Fallback search with relaxed terms if initial results are limited
     if len(results) < top_k // 2:  # If we get less than half expected results
