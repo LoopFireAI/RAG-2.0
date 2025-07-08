@@ -41,6 +41,25 @@ rag_graph = create_rag_graph()
 # Get bot user ID for feedback validation
 BOT_USER_ID = None
 
+def validate_and_fix_channel_context(client, event):
+    """Validate channel access and attempt to refresh context if needed"""
+    channel = event.get("channel")
+    
+    # First, try a simple API call to test channel access
+    try:
+        client.conversations_info(channel=channel)
+        return True, channel  # Channel works fine
+    except Exception as e:
+        if "channel_not_found" in str(e):
+            logger.warning(f"Channel {channel} not accessible in current session. This is likely due to a session reconnection.")
+            
+            # For Socket Mode reconnections, we can't easily fix this
+            # The best approach is to gracefully skip the event
+            return False, None
+        else:
+            # Some other error, re-raise it
+            raise e
+
 def clean_response_for_slack(response: str) -> str:
     """Clean up response formatting for better Slack presentation"""
     if not response:
@@ -148,11 +167,18 @@ def process_rag_query(query: str, user_id: str, user_name: str = "") -> str:
 def handle_mention(event, say, client, ack):
     """Handle @mentions of the bot, maintaining thread context"""
     ack()
+    
+    # FIRST: Validate channel access before doing anything
+    can_access, validated_channel = validate_and_fix_channel_context(client, event)
+    if not can_access:
+        logger.info(f"Skipping mention event due to session channel access issue")
+        return
+    
     logger.info(f"🎯 App mention handler triggered!")
     
     user_message = event.get("text", "").strip()
     user = event.get("user")
-    channel = event.get("channel")
+    channel = validated_channel  # Use the validated channel
     ts = event.get("ts")
     thread_ts = event.get("thread_ts", ts)  # If not a reply, thread_ts is ts
     
@@ -425,16 +451,28 @@ If this doesn't work, check that the Slack app has:
 def handle_reaction_added(event, say, client, ack):
     """Handle when users react to bot messages"""
     ack()
+    
+    item = event.get("item", {})
+    channel = item.get("channel")
+    
+    # Validate channel access first
+    try:
+        client.conversations_info(channel=channel)
+    except Exception as e:
+        if "channel_not_found" in str(e):
+            logger.info(f"Skipping reaction event due to session channel access issue")
+            return
+        raise e
+    
     logger.info(f"🔄 REACTION EVENT RECEIVED!")
     logger.info(f"🔍 Full event data: {event}")
     
     # Log ALL reaction details for debugging
     reaction = event.get("reaction")
     user = event.get("user")
-    item = event.get("item", {})
     logger.info(f"👤 User: {user}")
     logger.info(f"😀 Reaction emoji name: '{reaction}'")
-    logger.info(f"📧 Channel: {item.get('channel')}")
+    logger.info(f"📧 Channel: {channel}")
     logger.info(f"⏰ Message TS: {item.get('ts')}")
     
     # ENHANCED: Log every single reaction we receive to identify the correct name
@@ -699,10 +737,16 @@ def handle_message_events(event, say, client, logger):
     """Handle follow-up messages in threads where the bot has already replied."""
     logger.info(f"📩 Message event received: {event}")
 
+    # Validate channel access first
+    can_access, validated_channel = validate_and_fix_channel_context(client, event)
+    if not can_access:
+        logger.info(f"Skipping message event due to session channel access issue")
+        return
+
     # Only process if this is a thread reply (has thread_ts and it's not a bot message)
     thread_ts = event.get("thread_ts")
     ts = event.get("ts")
-    channel = event.get("channel")
+    channel = validated_channel  # Use the validated channel
     user = event.get("user")
     text = event.get("text", "").strip()
     subtype = event.get("subtype")
@@ -747,6 +791,33 @@ def handle_message_events(event, say, client, logger):
     if not bot_has_replied:
         logger.info("Bot has not replied in this thread yet. Ignoring message.")
         return
+
+    # Check if the last bot message was asking for a voice choice or other prompt
+    last_bot_message = None
+    for msg in reversed(thread_messages):
+        if msg.get("user") == bot_user_id or msg.get("bot_id"):
+            if msg.get("ts") != ts:  # Not the current message
+                last_bot_message = msg.get("text", "")
+                break
+    
+    # Only respond if the last bot message was asking for input (like "Choose Your Voice")
+    should_respond = False
+    if last_bot_message:
+        prompt_indicators = [
+            "Choose Your Voice",
+            "Rate this response",
+            "📝",
+            "Please rate",
+            "How would you rate",
+            "What voice would you like"
+        ]
+        should_respond = any(indicator in last_bot_message for indicator in prompt_indicators)
+    
+    if not should_respond:
+        logger.info(f"Last bot message was not asking for input. Ignoring follow-up message. Last bot message: '{last_bot_message[:100]}...'")
+        return
+    else:
+        logger.info(f"Last bot message was asking for input. Processing follow-up: '{text[:50]}...'")
 
     # Build message history for RAG agent
     from langchain_core.messages import HumanMessage, AIMessage
@@ -841,6 +912,15 @@ def log_all_requests(body, next, logger):
             logger.info(f"🎯 REACTION EVENT DETECTED: {inner_event}")
     else:
         logger.info(f"🌐 Request type: {event_type}")
+    
+    # Add session tracking for Socket Mode reconnections
+    if event_type == "event_callback":
+        inner_event = body.get("event", {})
+        if inner_event.get("type") in ["app_mention", "message", "reaction_added"]:
+            channel = inner_event.get("channel")
+            if channel:
+                logger.info(f"🔗 Processing event for channel: {channel}")
+    
     next()
 
 if __name__ == "__main__":
@@ -856,6 +936,7 @@ if __name__ == "__main__":
     logger.info("✅ Socket Mode - No public URL needed!")
     logger.info("✅ Supports @mentions and /wells commands")
     logger.info("✅ Supports checkmark reaction feedback collection")
+    logger.info("✅ Session-aware channel validation enabled")
     logger.info("ℹ️  Required scopes: app_mentions:read, channels:history, chat:write, chat:write.public, commands, reactions:read, reactions:write")
     logger.info("ℹ️  Required events: app_mention, reaction_added")
     logger.info("⚠️  DEBUGGING MODE: Will log ALL events and reactions")
