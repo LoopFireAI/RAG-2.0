@@ -199,6 +199,7 @@ CRITICAL REQUIREMENTS:
 - MUST directly answer the specific question asked
 - If the query asks for "3 things" or numbered items, provide exactly that structure
 - If the retrieved content doesn't directly address the question, synthesize relevant insights that do
+- MUST only have hashtags at the very end of the post. 
 
 SOCIAL MEDIA POST REQUIREMENTS:
 - Respond in short paragraphs. Please don't use bullet points in responses.
