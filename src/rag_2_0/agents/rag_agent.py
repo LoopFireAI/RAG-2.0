@@ -164,6 +164,7 @@ def generate_social_media_post(state: RAGState) -> RAGState:
 
 📱 SOCIAL MEDIA POST REQUIREMENTS:
 - Respond in short paragraphs. Please don't use bullet points in responses.
+- Never use emojis in responses.
 - Make sure the response is both detailed and concise. Use a call to action at the end of our captions inviting the audience to follow, read, and engage with future material.
 - Call to action preferences: 
 Awareness & Dialogue 
@@ -416,7 +417,7 @@ def generate_response(state: RAGState) -> RAGState:
         formatter = SourceFormatter()
         
         # Use the retrieved docs metadata for better formatting
-        sources_text = formatter.format_sources_section(retrieved_docs_metadata)
+        # sources_text = formatter.format_sources_section(retrieved_docs_metadata)  # Unused variable
 
         # Analyze query complexity to determine response approach
         is_analytical = any(word in query.lower() for word in ["analyze", "compare", "evaluate", "assess", "examples", "distinct"])
@@ -585,7 +586,7 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
     # If we're already waiting for leader input, process the user's response
     if waiting_for_leader and len(messages) >= 2:
         # Look for a leader selection prompt in previous messages
-        for i, msg in enumerate(messages[:-1]):
+        for msg in messages[:-1]:
             if hasattr(msg, 'content') and "Choose Your Voice" in msg.content:
                 # Found the prompt, now process the user's response
                 last_message = messages[-1]
@@ -682,10 +683,10 @@ def collect_feedback(state: RAGState) -> RAGState:
         import sys
         import os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-        from rag_2_0.feedback.feedback_storage import FeedbackStorage
+        # from rag_2_0.feedback.feedback_storage import FeedbackStorage  # Unused import
         from langchain_core.messages import AIMessage
 
-        storage = FeedbackStorage()
+        # storage = FeedbackStorage()  # Unused variable
         response_id = state.get("response_id", "")
 
         # Simple feedback collection - just prompt once and that's it
