@@ -300,6 +300,7 @@ def handle_mention(event, say, client, ack):
             except:
                 pass
             say(
+                channel=channel,
                 text="Sorry, I encountered an error processing your request. Please try again.",
                 thread_ts=thread_ts
             )
