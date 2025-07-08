@@ -46,6 +46,7 @@ class RAGState(TypedDict):
     waiting_for_leader: bool  # Track if we're waiting for leader specification
     original_query: str  # Store the original query when waiting for leader
     waiting_for_feedback: bool  # Track if we're waiting for user feedback
+    is_acknowledgment: bool  # Track if message is a simple acknowledgment
 
 # Initialize components
 llm = ChatOpenAI(
@@ -129,7 +130,7 @@ def detect_social_media_request(state: RAGState) -> RAGState:
     
     is_social_media = has_social_keywords or has_social_phrases or ends_with_social
     
-    logger.info(f"🔍 Social media detection: query='{query}', detected={is_social_media}")
+    logger.info(f"Social media detection: query='{query}', detected={is_social_media}")
     return {"is_social_media": is_social_media}
 
 def load_tone_profile(leader_name: str) -> str:
@@ -174,22 +175,22 @@ def generate_social_media_post(state: RAGState) -> RAGState:
     if grade == "yes":
         prompt = f"""You are {detected_leader.upper()}, creating a compelling social media post that shares valuable leadership insights.
 
-🎯 YOUR VOICE ({detected_leader.upper()}):
+YOUR VOICE ({detected_leader.upper()}):
 {tone_profile}
 
-📋 QUERY TO ADDRESS:
+QUERY TO ADDRESS:
 {query}
 
-🎯 RESPONSE STRUCTURE REQUIRED:
+RESPONSE STRUCTURE REQUIRED:
 Based on the query structure, you must provide a direct answer that addresses the specific question format. 
 - If asked for "3 things" - provide exactly 3 specific points
 - If asked about "balance" - focus specifically on work-life balance concepts
 - If asked about "professionals get wrong" - identify specific mistakes or misconceptions
 
-📊 KNOWLEDGE BASE CONTENT:
+KNOWLEDGE BASE CONTENT:
 {context}
 
-🚫 CRITICAL REQUIREMENTS:
+CRITICAL REQUIREMENTS:
 - DO NOT start with disclaimers or limitations
 - DO NOT use generic corporate language
 - DO NOT provide vague or surface-level insights
@@ -199,9 +200,8 @@ Based on the query structure, you must provide a direct answer that addresses th
 - If the query asks for "3 things" or numbered items, provide exactly that structure
 - If the retrieved content doesn't directly address the question, synthesize relevant insights that do
 
-📱 SOCIAL MEDIA POST REQUIREMENTS:
+SOCIAL MEDIA POST REQUIREMENTS:
 - Respond in short paragraphs. Please don't use bullet points in responses.
-- Never use emojis in responses.
 - Make sure the response is both detailed and concise. Use a call to action at the end of our captions inviting the audience to follow, read, and engage with future material.
 - Call to action preferences: 
 Awareness & Dialogue 
@@ -264,17 +264,17 @@ Newsletters: Curated, slower-paced content with personal insights, key updates, 
 
 Other (Facebook): Community-forward and personal tone, very similar to Instagram.
 
-📝 FORMAT:
+FORMAT:
 Create a single, cohesive post (not sections) that flows naturally while incorporating these elements.
 
-🎤 **Your Social Media Post as {detected_leader.upper()}:**"""
+**Your Social Media Post as {detected_leader.upper()}:**"""
     else:
         prompt = f"""You are {detected_leader.upper()}, creating a social media post about knowledge limitations.
 
-🎯 YOUR VOICE ({detected_leader.upper()}):
+YOUR VOICE ({detected_leader.upper()}):
 {tone_profile}
 
-❌ **Knowledge Gap for Query:** "{query}"
+**Knowledge Gap for Query:** "{query}"
 
 Create a brief, authentic social media post acknowledging this limitation while offering value in your characteristic style. Keep it under 100 words."""
 
@@ -290,15 +290,15 @@ Create a brief, authentic social media post acknowledging this limitation while 
             sources_formatted = formatter.format_sources_compact(retrieved_docs_metadata)
             if sources_formatted:
                 response_content += sources_formatted
-                logger.info(f"✅ Added sources to social media post: {len(retrieved_docs_metadata)} sources")
+                logger.info(f"Added sources to social media post: {len(retrieved_docs_metadata)} sources")
             else:
                 # Compact fallback for social media
-                response_content += f"\n\n📄 Based on {len(retrieved_docs_metadata)} research studies"
-                logger.warning("⚠️ Used fallback source formatting for social media")
+                response_content += f"\n\nBased on {len(retrieved_docs_metadata)} research studies"
+                logger.warning("Used fallback source formatting for social media")
         except Exception as e:
             logger.error(f"Error adding sources to social media post: {e}")
             # Simple fallback
-            response_content += f"\n\n📄 Based on research"
+            response_content += f"\n\nBased on research"
 
     # Create the response message with sources included
     from langchain_core.messages import AIMessage
@@ -327,7 +327,7 @@ def grade_documents(state: RAGState) -> RAGState:
 
     # If no context or very limited context, default to "yes" to prevent blocking
     if not context or len(context.strip()) < 50:
-        logger.warning(f"⚠️ Limited context ({len(context)} chars), defaulting to 'yes' grade")
+        logger.warning(f"Limited context ({len(context)} chars), defaulting to 'yes' grade")
         return {"grade": "yes"}
 
     prompt = GRADE_PROMPT.format(question=query, context=context)
@@ -337,9 +337,66 @@ def grade_documents(state: RAGState) -> RAGState:
     grade = "yes" if "yes" in response.content.lower() else "no"
     
     # Log grading decision for debugging
-    logger.info(f"📊 Document grading: query='{query[:50]}...', grade={grade}")
+    logger.info(f"Document grading: query='{query[:50]}...', grade={grade}")
 
     return {"grade": grade}
+
+def is_acknowledgment_message(content: str) -> bool:
+    """Detect if a message is a simple acknowledgment that doesn't need full RAG processing."""
+    content = content.lower().strip()
+    
+    # Common acknowledgment patterns
+    acknowledgment_patterns = [
+        "thank you", "thanks", "thank u", "thx", "ty",
+        "great", "awesome", "perfect", "excellent", "nice",
+        "got it", "ok", "okay", "alright", "sounds good",
+        "appreciate it", "helpful", "that helps", "makes sense",
+        "good to know", "understood", "i see", "interesting",
+        "cool", "sweet", "nice work", "well done"
+    ]
+    
+    # Check if the entire message is just an acknowledgment (with some flexibility for punctuation)
+    cleaned_content = content.strip('!.,?').strip()
+    
+    # Direct matches
+    if cleaned_content in acknowledgment_patterns:
+        return True
+    
+    # Pattern matches for short messages
+    if len(cleaned_content) <= 30:  # Only check short messages to avoid false positives
+        for pattern in acknowledgment_patterns:
+            if cleaned_content.startswith(pattern) or cleaned_content.endswith(pattern):
+                return True
+    
+    return False
+
+def handle_acknowledgment(state: RAGState) -> RAGState:
+    """Handle acknowledgment messages with simple responses."""
+    import uuid
+    from langchain_core.messages import AIMessage
+    
+    # Simple, varied acknowledgment responses
+    responses = [
+        "You're welcome! Feel free to ask if you need anything else.",
+        "Glad I could help! Let me know if you have other questions.",
+        "Happy to assist! Reach out anytime.",
+        "You're welcome! I'm here whenever you need support."
+    ]
+    
+    # Pick a response (could be random, but keeping it simple)
+    response = responses[0]
+    
+    # Create response message
+    response_message = AIMessage(content=response)
+    
+    logger.info(f"Handled acknowledgment with simple response: '{response}'")
+    
+    return {
+        "messages": [response_message],
+        "response_id": str(uuid.uuid4()),
+        "feedback_collected": True,  # Skip feedback for acknowledgments
+        "is_acknowledgment": True
+    }
 
 def extract_query(state: RAGState) -> RAGState:
     """Extract query from messages and reset state for new conversations."""
@@ -386,6 +443,9 @@ def extract_query(state: RAGState) -> RAGState:
     else:
         query = "What is machine learning?"
 
+    # Check if this is an acknowledgment message
+    is_ack = is_acknowledgment_message(query)
+    
     # For new conversations, reset all state variables
     if is_new_conversation:
         logger.info(f"New conversation detected, resetting state for query: '{query[:50]}...'")
@@ -398,11 +458,12 @@ def extract_query(state: RAGState) -> RAGState:
             "is_social_media": False,
             "grade": "yes",
             "feedback_collected": False,
-            "waiting_for_feedback": False
+            "waiting_for_feedback": False,
+            "is_acknowledgment": is_ack
         }
     else:
         logger.info(f"Continuing conversation with query: '{query[:50]}...'")
-        return {"query": query}
+        return {"query": query, "is_acknowledgment": is_ack}
 
 def retrieve_documents(state: RAGState) -> RAGState:
     """Retrieve relevant documents with feedback-enhanced scoring."""
@@ -441,7 +502,7 @@ def retrieve_documents(state: RAGState) -> RAGState:
                 if doc.page_content not in seen_content and len(results) < top_k:
                     results.append(doc)
                     seen_content.add(doc.page_content)
-        logger.info(f"🎯 Added targeted search results for topics: {key_topics}")
+        logger.info(f"Added targeted search results for topics: {key_topics}")
     
     # Fallback search with relaxed terms if initial results are limited
     if len(results) < top_k // 2:  # If we get less than half expected results
@@ -452,7 +513,7 @@ def retrieve_documents(state: RAGState) -> RAGState:
         if important_terms:
             # Try search with just key terms
             broader_query = ' '.join(important_terms[:3])  # Use top 3 key terms
-            logger.info(f"🔍 Fallback search with broader query: '{broader_query}'")
+            logger.info(f"Fallback search with broader query: '{broader_query}'")
             additional_results = vector_store.similarity_search(broader_query, k=top_k)
             
             # Merge results, avoiding duplicates
@@ -558,16 +619,16 @@ def generate_response(state: RAGState) -> RAGState:
 
         prompt = f"""You are {detected_leader.upper()}, responding with your authentic voice and expertise. This is a {response_structure} query requiring a comprehensive, value-driven response.
 
-🎯 YOUR VOICE & PERSPECTIVE ({detected_leader.upper()}):
+YOUR VOICE & PERSPECTIVE ({detected_leader.upper()}):
 {tone_profile}
 
-📋 QUERY TO ADDRESS:
+QUERY TO ADDRESS:
 {query}
 
-📊 KNOWLEDGE BASE CONTENT:
+KNOWLEDGE BASE CONTENT:
 {context}
 
-🏗️ RESPONSE FRAMEWORK:
+RESPONSE FRAMEWORK:
 
 1. **OPENING** (Establish Authority):
    - Acknowledge the question with {detected_leader}'s signature style
@@ -586,7 +647,7 @@ def generate_response(state: RAGState) -> RAGState:
    - Provide actionable next steps or thought-provoking insights
    - End with {detected_leader}'s motivational style
 
-📝 QUALITY STANDARDS:
+QUALITY STANDARDS:
 - SYNTHESIZE information from the knowledge base - don't just quote or excerpt
 - Transform raw research into {detected_leader}'s authentic insights and perspective
 - Use specific examples and data points, but frame them in your voice
@@ -594,17 +655,17 @@ def generate_response(state: RAGState) -> RAGState:
 - Ensure practical applicability of insights
 - Create original value-added commentary, not just information regurgitation
 
-🎤 **Your Response as {detected_leader.upper()}:**"""
+**Your Response as {detected_leader.upper()}:**"""
     else:
         prompt = f"""You are {detected_leader.upper()}, maintaining your authentic voice even when knowledge is limited.
 
-🎯 YOUR VOICE ({detected_leader.upper()}):
+YOUR VOICE ({detected_leader.upper()}):
 {tone_profile}
 
-❌ **Knowledge Gap Identified**
+**Knowledge Gap Identified**
 The available information doesn't contain sufficient relevant content to properly address this query: "{query}"
 
-🗣️ **Your Response as {detected_leader.upper()}:**
+**Your Response as {detected_leader.upper()}:**
 Acknowledge the limitation authentically in your voice, explain what type of information would be needed, and offer alternative value or next steps that align with your leadership style. Maintain your characteristic tone while being transparent about the knowledge gap."""
 
     # Generate the main response
@@ -619,15 +680,15 @@ Acknowledge the limitation authentically in your voice, explain what type of inf
             sources_formatted = formatter.format_sources_compact(retrieved_docs_metadata)
             if sources_formatted:
                 response_content += sources_formatted
-                logger.info(f"✅ Added sources to response content: {len(retrieved_docs_metadata)} sources")
+                logger.info(f"Added sources to response content: {len(retrieved_docs_metadata)} sources")
             else:
                 # Fallback source formatting
-                response_content += f"\n\n📚 **Sources:** {len(retrieved_docs_metadata)} research documents"
-                logger.warning("⚠️ Used fallback source formatting")
+                response_content += f"\n\n**Sources:** {len(retrieved_docs_metadata)} research documents"
+                logger.warning("Used fallback source formatting")
         except Exception as e:
             logger.error(f"Error adding sources to response: {e}")
             # Simple fallback
-            response_content += f"\n\n📚 **Sources:** {len(retrieved_docs_metadata)} research documents"
+            response_content += f"\n\n**Sources:** {len(retrieved_docs_metadata)} research documents"
 
     # Create the response message with sources included
     from langchain_core.messages import AIMessage
@@ -817,15 +878,13 @@ Only respond with one word: janelle, doreen, or none"""
     from langchain_core.messages import AIMessage
 
     leader_prompt = """
-🎯 **Choose Your Voice**
+Choose the voice that you want me to use to write this:
 
-I can respond in different leadership voices:
+Janelle
+Doreen
+Default
 
-**Janelle** - Strategic business perspective with scaling mindset
-**Doreen** - Relational, equity-focused approach  
-**Default** - Professional, research-backed tone
-
-Please reply with: **Janelle**, **Doreen**, or **Default**
+Please reply with: Janelle, Doreen, or Default
     """.strip()
 
     result = {
@@ -854,7 +913,7 @@ def collect_feedback(state: RAGState) -> RAGState:
         # Simple feedback collection - just prompt once and that's it
         if response_id:
             feedback_prompt = """
-📝 **Rate this response:**
+**Rate this response:**
 
 Please rate from 1-5:
 • **1** = Very Poor  
@@ -894,6 +953,7 @@ def create_rag_graph():
 
     # Add nodes
     workflow.add_node("extract_query", extract_query)
+    workflow.add_node("handle_acknowledgment", handle_acknowledgment)
     workflow.add_node("detect_social_media", detect_social_media_request)
     workflow.add_node("elicit_leader_and_tone", elicit_leader_and_tone)
     workflow.add_node("retrieve", retrieve_documents)
@@ -906,8 +966,18 @@ def create_rag_graph():
     # Define workflow
     workflow.set_entry_point("extract_query")
 
-    # Simple linear pipeline
-    workflow.add_edge("extract_query", "detect_social_media")
+    # Check for acknowledgments first
+    workflow.add_conditional_edges(
+        "extract_query",
+        lambda x: "handle_acknowledgment" if x.get("is_acknowledgment", False) else "detect_social_media",
+        {
+            "handle_acknowledgment": "handle_acknowledgment",
+            "detect_social_media": "detect_social_media"
+        }
+    )
+    
+    # Acknowledgments go straight to END
+    workflow.add_edge("handle_acknowledgment", END)
     workflow.add_edge("detect_social_media", "elicit_leader_and_tone")
 
     # After elicit_leader_and_tone, check if we need to wait for user input
@@ -927,7 +997,7 @@ def create_rag_graph():
     def routing_decision(state):
         is_social = state.get("is_social_media", False)
         decision = "generate_social_media" if is_social else "generate"
-        logger.info(f"🔀 Routing decision: is_social_media={is_social}, route={decision}")
+        logger.info(f"Routing decision: is_social_media={is_social}, route={decision}")
         return decision
     
     workflow.add_conditional_edges(
