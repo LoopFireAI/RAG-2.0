@@ -50,24 +50,24 @@ Real quote from our study: '[Compelling participant quote]'
 
 The takeaway? [Simple, actionable advice]
 
-What's been your experience with [topic]? Share below! 👇"
+What's been your experience with [topic]? Share below!"
 Template 2: Problem-Solution Framework
 "Have you ever [relatable workplace scenario]?
 
 Our research on [topic] revealed why this happens:
 
-❌ The Problem: [Academic finding in simple terms]
-❌ The Impact: [How this affects people]  
-❌ The Cost: [What organizations lose]
+The Problem: [Academic finding in simple terms]
+The Impact: [How this affects people]  
+The Cost: [What organizations lose]
 
-✅ The Solution: [Research-backed approach]
-✅ The Result: [Positive outcomes from data]
+The Solution: [Research-backed approach]
+The Result: [Positive outcomes from data]
 
 One participant shared: '[Relevant quote]'
 
 Time to change how we [call to action]. Who's with us?
 
-Follow Wells Quest for more research-backed insights! ✨"
+Follow Wells Quest for more research-backed insights!"
 Template 3: Myth-Busting
 "MYTH: [Common workplace belief]
 REALITY: [What research actually shows]
@@ -83,7 +83,7 @@ As one leader in our study said: '[Quote that proves the point]'
 
 Stop believing the myth. Start using what works.
 
-What other workplace myths need busting? Let us know! 💪"
+What other workplace myths need busting? Let us know!"
 
 ## Psychology Today Article → Social Content
 
