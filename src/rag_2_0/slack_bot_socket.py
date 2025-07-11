@@ -168,6 +168,9 @@ def handle_mention(event, say, client, ack):
     """Handle @mentions of the bot, maintaining thread context"""
     ack()
     
+    # Log App ID information for debugging
+    logger.info(f"🔍 APP DEBUG - Event data: {event}")
+    
     # FIRST: Validate channel access before doing anything
     can_access, validated_channel = validate_and_fix_channel_context(client, event)
     if not can_access:
@@ -908,6 +911,12 @@ def log_all_requests(body, next, logger):
         inner_event = body.get("event", {})
         inner_type = inner_event.get("type", "unknown")
         logger.info(f"🌐 Event callback received: {inner_type}")
+        
+        # Log App ID and Team ID for all events
+        api_app_id = body.get("api_app_id", "UNKNOWN")
+        team_id = body.get("team_id", "UNKNOWN")
+        logger.info(f"🆔 APP DEBUG - App ID: {api_app_id}, Team ID: {team_id}")
+        
         if inner_type == "reaction_added":
             logger.info(f"🎯 REACTION EVENT DETECTED: {inner_event}")
     else:
@@ -918,8 +927,11 @@ def log_all_requests(body, next, logger):
         inner_event = body.get("event", {})
         if inner_event.get("type") in ["app_mention", "message", "reaction_added"]:
             channel = inner_event.get("channel")
+            api_app_id = body.get("api_app_id", "UNKNOWN")
+            team_id = body.get("team_id", "UNKNOWN")
             if channel:
                 logger.info(f"🔗 Processing event for channel: {channel}")
+                logger.info(f"🆔 App ID: {api_app_id}, Team ID: {team_id}")
     
     next()
 
