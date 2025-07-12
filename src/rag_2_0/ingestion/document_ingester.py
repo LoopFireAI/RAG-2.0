@@ -87,7 +87,8 @@ class DocumentIngester:
             "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH",
             "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ",
             "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT",
-            "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8"
+            "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8",
+            "1SBr_c2NwCuXsNZsjau37uxxq2qRQH1F6"
         ]
 
         credentials_path = os.getenv("GOOGLE_CREDENTIALS_PATH")
@@ -125,16 +126,17 @@ class DocumentIngester:
         for doc in all_docs:
             doc.metadata = self._filter_metadata(doc.metadata)
             doc_hash = get_document_hash(doc)
+            folder_id = doc.metadata.get('parents', ['Unknown'])[0] if doc.metadata.get('parents') else 'Unknown'
             if doc_hash not in seen_hashes:
                 seen_hashes.add(doc_hash)
                 documents.append(doc)
-                logger.info(f"Added unique document: {doc.metadata.get('name', 'Unknown')}")
+                logger.info(f"Added unique document: {doc.metadata.get('name', 'Unknown')} from folder: {folder_id}")
                 logger.debug("Document Metadata:")
                 for key, value in doc.metadata.items():
                     logger.debug(f"  {key}: {value}")
             else:
                 duplicate_count += 1
-                logger.debug(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')}")
+                logger.debug(f"Skipped duplicate document: {doc.metadata.get('name', 'Unknown')} from folder: {folder_id}")
 
         logger.info("Document Loading Summary:")
         logger.info(f"Total unique documents loaded: {len(documents)}")
