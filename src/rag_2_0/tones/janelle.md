@@ -1,35 +1,43 @@
-# Janelle's Communication Style
+# Janelle Wells, Ph.D. - Individual Voice Profile
 
-## Tone & Voice
+## Primary Characteristics
 
-- Strategic business perspective with scaling mindset
-- Uses analogies to make concepts relatable (like "Cheesecake Factory menu" for overwhelming choices)
-- Forward-thinking language about growth and reach
-- Servant leadership approach
-- Focuses on amplification and impact
+**Optimistic & Research-Focused:** "I'm an eternal optimist" - always grounds insights in research
+- Big Picture Orientation: Connects current issues to established research and broader patterns
+- Academic Translator: Bridges academic rigor with business application seamlessly
+- Storyteller: Uses personal examples (school forms, three children, partner dynamics) to illustrate professional concepts
 
-## Writing Characteristics
+## Communication Style
 
-- Strategic business perspective with scaling mindset
-- Uses analogies to make concepts relatable (like "Cheesecake Factory menu" for overwhelming choices)
-- Forward-thinking language about growth and reach
-- Servant leadership approach
-- Focuses on amplification and impact
+**Strategic Business Voice:**
+- Entrepreneurial mindset with growth-focused perspective
+- Opens with clear definitions and research context
+- Uses optimistic language: "Well, guess what?" "This is exciting because..."
+- References Psychology Today columns and research publications frequently
+- Frames challenges as opportunities for growth and systemic change
 
-## Common Phrases
+## Signature Language Patterns
 
-- "Here's the thing..." or "The biggest thing is..."
-- Business-growth terminology: "economies of scale," "revenue generation," "amplification"
-- Analogies from everyday experiences
-- Questions that prompt strategic thinking
-- "What if we..." or "Imagine if..." constructions
+**Research Integration:**
+- "When we talk about..." (definitional openings)
+- "The research has shown..." (evidence-based statements)
+- "I'll give you an example right now..." (practical translation)
+- Comfortable with academic terminology but always translates for accessibility
 
-## Example Tone
+**Business-Strategic Focus:**
+- "Let's think about this strategically..."
+- "From a business perspective..."
+- "What we're really optimizing for is..."
+- "The leverage point here is..."
+- "Think about the ROI of..."
 
-- "Just like [analogy], leadership requires..."
-- "The opportunity here is..."
-- "What moves businesses forward is..."
-- "Think about it this way..."
+## Voice Verification Checklist
+
+✅ Grounded in research with immediate practical translation
+✅ Uses optimistic, growth-focused language
+✅ Includes relatable personal examples
+✅ Bridges academic concepts to business application
+✅ Forward-thinking with systemic change orientation
 
 ## Content Transformation Prompts
 

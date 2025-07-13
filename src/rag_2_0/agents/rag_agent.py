@@ -151,16 +151,16 @@ def generate_social_media_post(state: RAGState) -> RAGState:
     response_id = str(uuid.uuid4())
 
     if grade == "yes":
-        prompt = f"""You are {detected_leader.upper()}, creating a compelling social media post that shares valuable leadership insights.
+        prompt = f"""You are {detected_leader.upper()}, sharing a warm, encouraging social media post that feels like advice from a trusted mentor.
 
-🎯 YOUR VOICE ({detected_leader.upper()}):
+Your authentic voice as {detected_leader.upper()}:
 {tone_profile}
 
-📋 QUERY TO ADDRESS:
-{query}
+The insight you're sharing: {query}
 
-📊 KNOWLEDGE BASE CONTENT:
-{context}
+Your knowledge and experience: {context}
+
+Create a social media post that feels like you're talking directly to someone who needs encouragement and practical guidance. Use storytelling, not bullet points.
 
 📱 SOCIAL MEDIA POST REQUIREMENTS:
 - Respond in short paragraphs. Please don't use bullet points in responses.
@@ -358,6 +358,17 @@ def retrieve_documents(state: RAGState) -> RAGState:
     documents = [doc.page_content for doc in results]
     context = "\n\n".join(documents)
 
+    # Load document titles from JSON
+    import json
+    import os
+    try:
+        titles_file = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'document_titles.json')
+        with open(titles_file, 'r', encoding='utf-8') as f:
+            title_mapping = json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not load document titles: {e}")
+        title_mapping = {}
+
     # Extract sources and metadata for feedback
     sources = []
     retrieved_docs_metadata = []
@@ -365,10 +376,14 @@ def retrieve_documents(state: RAGState) -> RAGState:
         if 'source' in doc.metadata:
             sources.append(doc.metadata['source'])
 
+        # Get clean title from mapping or fallback to source
+        source_url = doc.metadata.get('source', '')
+        clean_title = title_mapping.get(source_url, source_url)
+
         # Store full metadata for feedback correlation
         retrieved_docs_metadata.append({
             'id': doc.metadata.get('id', doc.metadata.get('source', '')),
-            'title': doc.metadata.get('title', doc.metadata.get('source', 'Unknown')),
+            'title': clean_title,
             'source': doc.metadata.get('source', ''),
             'metadata': doc.metadata,
             'content_preview': doc.page_content[:200]
@@ -425,44 +440,40 @@ def generate_response(state: RAGState) -> RAGState:
 
         response_structure = "analytical" if is_analytical else "actionable" if is_actionable else "informational"
 
-        prompt = f"""You are {detected_leader.upper()}, responding with your authentic voice and expertise. This is a {response_structure} query requiring a comprehensive, value-driven response.
+        prompt = f"""You are {detected_leader.upper()}, having a warm conversation with a trusted colleague who needs practical guidance. This is NOT an academic presentation - it's a supportive, wise conversation.
 
-🎯 YOUR VOICE & PERSPECTIVE ({detected_leader.upper()}):
+Your authentic voice as {detected_leader.upper()}:
 {tone_profile}
 
-📋 QUERY TO ADDRESS:
-{query}
+The question you're addressing: {query}
 
-📊 KNOWLEDGE BASE CONTENT:
-{context}
+What you know from experience and research: {context}
 
-🏗️ RESPONSE FRAMEWORK:
+CRITICAL: Your response must be a CONVERSATION, not a lecture. Think "trusted professor over coffee" not "academic presentation."
 
-1. **OPENING** (Establish Authority):
-   - Acknowledge the question with {detected_leader}'s signature style
-   - Preview the value you'll provide
-   - Use {detected_leader}'s characteristic opening phrases
+MANDATORY STORYTELLING APPROACH:
+1. Start with a relatable question or story that validates their experience
+2. Use metaphors, analogies, or everyday examples to explain concepts  
+3. Share specific workplace scenarios readers can immediately recognize
+4. Bridge research to practice through storytelling, not bullet points
+5. End with genuine encouragement and community connection
 
-2. **CORE CONTENT** (Deliver Value):
-   {"- Provide 3+ specific, distinct examples with clear explanations" if is_analytical else "- Give step-by-step actionable guidance" if is_actionable else "- Share comprehensive insights with practical applications"}
-   - Use concrete details from the knowledge base
-   - Include relevant data, statistics, or research findings
-   - Frame everything through {detected_leader}'s unique perspective
-   - Make connections to broader themes or implications
+REQUIRED ELEMENTS:
+- Use "you" language to speak directly to the reader
+- Include at least one metaphor or analogy
+- Provide specific, actionable steps they can try tomorrow
+- Reference research naturally within stories, not as separate citations
+- Acknowledge the emotional reality of their workplace challenges
+- Validate their struggle before offering solutions
+- Use warm, encouraging language throughout
 
-3. **ENGAGEMENT** (Drive Action):
-   - Synthesize key takeaways
-   - Provide actionable next steps or thought-provoking insights
-   - End with {detected_leader}'s motivational style
+CONVERSATION FLOW:
+- Hook: Relatable question or scenario
+- Heart: Acknowledge their emotional reality with warmth
+- Help: Practical guidance through storytelling
+- Hope: Encouraging next steps and community connection
 
-📝 QUALITY STANDARDS:
-- Every point must be substantiated by the knowledge base content
-- Use specific examples, not generic statements  
-- Maintain {detected_leader}'s authentic voice throughout
-- Ensure practical applicability of insights
-- Include precise details and avoid vague generalizations
-
-🎤 **Your Response as {detected_leader.upper()}:**"""
+Respond as if you're sitting across from someone who trusts you completely and needs both practical guidance and emotional support. Make every word feel human, warm, and immediately useful."""
     else:
         prompt = f"""You are {detected_leader.upper()}, maintaining your authentic voice even when knowledge is limited.
 
