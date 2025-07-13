@@ -100,7 +100,17 @@ SOCIAL_MEDIA_PROMPT = (
 
 def detect_social_media_request(state: RAGState) -> RAGState:
     """Detect if the query is requesting a social media post."""
-    query = state["query"].lower()
+    query = state["query"]
+    
+    # Handle different query formats from LangGraph Studio
+    if isinstance(query, list):
+        # Extract text from list of dicts like [{'type': 'text', 'text': '...'}]
+        if query and isinstance(query[0], dict) and 'text' in query[0]:
+            query = query[0]['text']
+        else:
+            query = " ".join(str(item) for item in query)
+    
+    query = str(query).lower()
 
     # Keywords that might indicate a social media post request
     social_media_keywords = [
@@ -299,6 +309,15 @@ def extract_query(state: RAGState) -> RAGState:
             query = last_message.get('content', '')
         else:
             query = str(last_message)
+        
+        # Handle LangGraph Studio format: [{'type': 'text', 'text': '...'}]
+        if isinstance(query, list):
+            if query and isinstance(query[0], dict) and 'text' in query[0]:
+                query = query[0]['text']
+            else:
+                query = " ".join(str(item) for item in query)
+        
+        query = str(query)
     else:
         query = "What is machine learning?"
 
@@ -602,11 +621,20 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
                 # Found the prompt, now process the user's response
                 last_message = messages[-1]
                 if hasattr(last_message, 'content'):
-                    choice = last_message.content.strip().lower()
+                    choice = last_message.content
                 elif isinstance(last_message, dict):
-                    choice = last_message.get('content', '').strip().lower()
+                    choice = last_message.get('content', '')
                 else:
-                    choice = str(last_message).strip().lower()
+                    choice = str(last_message)
+                
+                # Handle LangGraph Studio format: [{'type': 'text', 'text': '...'}]
+                if isinstance(choice, list):
+                    if choice and isinstance(choice[0], dict) and 'text' in choice[0]:
+                        choice = choice[0]['text']
+                    else:
+                        choice = " ".join(str(item) for item in choice)
+                
+                choice = str(choice).strip().lower()
 
                 logger.debug(f"Processing leader choice: '{choice}'")
 
