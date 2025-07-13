@@ -807,6 +807,8 @@ def handle_message_events(event, say, client, logger):
     if last_bot_message:
         prompt_indicators = [
             "Choose Your Voice",
+            "Choose the voice that you want me to use to write this:",
+            "Please reply with",
             "Rate this response",
             "📝",
             "Please rate",
