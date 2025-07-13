@@ -125,14 +125,9 @@ class SourceFormatter:
             return ""
         
         citations = []
-        seen_titles = set()
         for doc_meta in retrieved_docs_metadata:
             citation = self.format_document_citation(doc_meta.get('metadata', {}))
-            # Use raw_title as the key for deduplication
-            title_key = citation['raw_title']
-            if title_key not in seen_titles:
-                seen_titles.add(title_key)
-                citations.append(citation)
+            citations.append(citation)
         
         # Group by category
         categories = {}
@@ -143,7 +138,7 @@ class SourceFormatter:
             categories[category].append(citation)
         
         # Build formatted output
-        output_lines = ["\n\n**Sources:**"]
+        output_lines = ["\n\n📚 **Sources:**"]
         
         for category, docs in categories.items():
             if len(categories) > 1:  # Only show category headers if multiple categories
@@ -192,9 +187,9 @@ class SourceFormatter:
             citations.append(compact)
         
         if len(citations) == 1:
-            return f"\n\n**Source:** {citations[0]}"
+            return f"\n\n📄 **Source:** {citations[0]}"
         else:
-            return f"\n\n**Sources:** {' • '.join(citations[:3])}" + (f" • +{len(citations)-3} more" if len(citations) > 3 else "")
+            return f"\n\n📚 **Sources:** {' • '.join(citations[:3])}" + (f" • +{len(citations)-3} more" if len(citations) > 3 else "")
 
     def format_inline_citations(self, retrieved_docs_metadata: List[Dict[str, Any]]) -> Dict[int, str]:
         """Create inline citation markers that can be embedded in text."""
