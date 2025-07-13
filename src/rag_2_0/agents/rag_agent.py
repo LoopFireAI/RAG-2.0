@@ -101,7 +101,17 @@ SOCIAL_MEDIA_PROMPT = (
 
 def detect_social_media_request(state: RAGState) -> RAGState:
     """Detect if the query is requesting a social media post."""
-    query = state["query"].lower()
+    query = state["query"]
+    
+    # Handle different query formats from LangGraph Studio
+    if isinstance(query, list):
+        # Extract text from list of dicts like [{'type': 'text', 'text': '...'}]
+        if query and isinstance(query[0], dict) and 'text' in query[0]:
+            query = query[0]['text']
+        else:
+            query = " ".join(str(item) for item in query)
+    
+    query = str(query).lower()
 
     # Comprehensive keyword detection for social media posts
     social_media_keywords = [
@@ -173,7 +183,7 @@ def generate_social_media_post(state: RAGState) -> RAGState:
     response_id = str(uuid.uuid4())
 
     if grade == "yes":
-        prompt = f"""You are {detected_leader.upper()}, creating a compelling social media post that shares valuable leadership insights.
+        prompt = f"""You are {detected_leader.upper()}, sharing a warm, encouraging social media post that feels like advice from a trusted mentor.
 
 YOUR VOICE ({detected_leader.upper()}):
 {tone_profile}
@@ -448,6 +458,7 @@ def extract_query(state: RAGState) -> RAGState:
     is_ack = is_acknowledgment_message(query)
     
     # For new conversations, reset all state variables
+    is_ack = is_acknowledgment_message(query)
     if is_new_conversation:
         logger.info(f"New conversation detected, resetting state for query: '{query[:50]}...'")
         return {
@@ -467,7 +478,7 @@ def extract_query(state: RAGState) -> RAGState:
         return {"query": query, "is_acknowledgment": is_ack}
 
 def retrieve_documents(state: RAGState) -> RAGState:
-    """Retrieve relevant documents with feedback-enhanced scoring."""
+    """Retrieve relevant documents with feedback-enhanced scoring and fallback logic."""
     query = state["query"]
 
     # Get feedback storage for document scoring enhancement
@@ -551,6 +562,17 @@ def retrieve_documents(state: RAGState) -> RAGState:
     
     context = "\n\n".join(formatted_docs)
 
+    # Load document titles from JSON
+    import json
+    import os
+    try:
+        titles_file = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'document_titles.json')
+        with open(titles_file, 'r', encoding='utf-8') as f:
+            title_mapping = json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not load document titles: {e}")
+        title_mapping = {}
+
     # Extract sources and metadata for feedback
     sources = []
     retrieved_docs_metadata = []
@@ -558,10 +580,14 @@ def retrieve_documents(state: RAGState) -> RAGState:
         if 'source' in doc.metadata:
             sources.append(doc.metadata['source'])
 
+        # Get clean title from mapping or fallback to source
+        source_url = doc.metadata.get('source', '')
+        clean_title = title_mapping.get(source_url, source_url)
+
         # Store full metadata for feedback correlation
         retrieved_docs_metadata.append({
             'id': doc.metadata.get('id', doc.metadata.get('source', '')),
-            'title': doc.metadata.get('title', doc.metadata.get('source', 'Unknown')),
+            'title': clean_title,
             'source': doc.metadata.get('source', ''),
             'metadata': doc.metadata,
             'content_preview': doc.page_content[:200]
@@ -618,7 +644,7 @@ def generate_response(state: RAGState) -> RAGState:
 
         response_structure = "analytical" if is_analytical else "actionable" if is_actionable else "informational"
 
-        prompt = f"""You are {detected_leader.upper()}, responding with your authentic voice and expertise. This is a {response_structure} query requiring a comprehensive, value-driven response.
+        prompt = f"""You are {detected_leader.upper()}, having a warm conversation with a trusted colleague who needs practical guidance. This is NOT an academic presentation - it's a supportive, wise conversation.
 
 YOUR VOICE & PERSPECTIVE ({detected_leader.upper()}):
 {tone_profile}
@@ -631,22 +657,27 @@ KNOWLEDGE BASE CONTENT:
 
 RESPONSE FRAMEWORK:
 
-1. **OPENING** (Establish Authority):
-   - Acknowledge the question with {detected_leader}'s signature style
-   - Preview the value you'll provide
-   - Use {detected_leader}'s characteristic opening phrases
+MANDATORY STORYTELLING APPROACH:
+1. Start with a relatable question or story that validates their experience
+2. Use metaphors, analogies, or everyday examples to explain concepts  
+3. Share specific workplace scenarios readers can immediately recognize
+4. Bridge research to practice through storytelling, not bullet points
+5. End with genuine encouragement and community connection
 
-2. **CORE CONTENT** (Deliver Value):
-   {"- Provide 3+ specific, distinct examples with clear explanations" if is_analytical else "- Give step-by-step actionable guidance" if is_actionable else "- Share comprehensive insights with practical applications"}
-   - Use concrete details from the knowledge base
-   - Include relevant data, statistics, or research findings
-   - Frame everything through {detected_leader}'s unique perspective
-   - Make connections to broader themes or implications
+REQUIRED ELEMENTS:
+- Use "you" language to speak directly to the reader
+- Include at least one metaphor or analogy
+- Provide specific, actionable steps they can try tomorrow
+- Reference research naturally within stories, not as separate citations
+- Acknowledge the emotional reality of their workplace challenges
+- Validate their struggle before offering solutions
+- Use warm, encouraging language throughout
 
-3. **ENGAGEMENT** (Drive Action):
-   - Synthesize key takeaways
-   - Provide actionable next steps or thought-provoking insights
-   - End with {detected_leader}'s motivational style
+CONVERSATION FLOW:
+- Hook: Relatable question or scenario
+- Heart: Acknowledge their emotional reality with warmth
+- Help: Practical guidance through storytelling
+- Hope: Encouraging next steps and community connection
 
 QUALITY STANDARDS:
 - SYNTHESIZE information from the knowledge base - don't just quote or excerpt
@@ -815,11 +846,20 @@ def elicit_leader_and_tone(state: RAGState) -> RAGState:
                 # Found the prompt, now process the user's response
                 last_message = messages[-1]
                 if hasattr(last_message, 'content'):
-                    choice = last_message.content.strip().lower()
+                    choice = last_message.content
                 elif isinstance(last_message, dict):
-                    choice = last_message.get('content', '').strip().lower()
+                    choice = last_message.get('content', '')
                 else:
-                    choice = str(last_message).strip().lower()
+                    choice = str(last_message)
+                
+                # Handle LangGraph Studio format: [{'type': 'text', 'text': '...'}]
+                if isinstance(choice, list):
+                    if choice and isinstance(choice[0], dict) and 'text' in choice[0]:
+                        choice = choice[0]['text']
+                    else:
+                        choice = " ".join(str(item) for item in choice)
+                
+                choice = str(choice).strip().lower()
 
                 logger.debug(f"Processing leader choice: '{choice}'")
 
