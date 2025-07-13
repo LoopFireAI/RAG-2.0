@@ -46,6 +46,7 @@ class RAGState(TypedDict):
     waiting_for_leader: bool  # Track if we're waiting for leader specification
     original_query: str  # Store the original query when waiting for leader
     waiting_for_feedback: bool  # Track if we're waiting for user feedback
+    is_acknowledgment: bool  # Track if the current query is an acknowledgment
 
 # Initialize components
 llm = ChatOpenAI(
@@ -293,6 +294,48 @@ def grade_documents(state: RAGState) -> RAGState:
 
     return {"grade": grade}
 
+# --- ACKNOWLEDGMENT HANDLING RESTORE ---
+def is_acknowledgment_message(content: str) -> bool:
+    """Detect if a message is a simple acknowledgment that doesn't need full RAG processing."""
+    content = content.lower().strip()
+    acknowledgment_patterns = [
+        "thank you", "thanks", "thank u", "thx", "ty",
+        "great", "awesome", "perfect", "excellent", "nice",
+        "got it", "ok", "okay", "alright", "sounds good",
+        "appreciate it", "helpful", "that helps", "makes sense",
+        "good to know", "understood", "i see", "interesting",
+        "cool", "sweet", "nice work", "well done"
+    ]
+    cleaned_content = content.strip('!.,?').strip()
+    if cleaned_content in acknowledgment_patterns:
+        return True
+    if len(cleaned_content) <= 30:
+        for pattern in acknowledgment_patterns:
+            if cleaned_content.startswith(pattern) or cleaned_content.endswith(pattern):
+                return True
+    return False
+
+def handle_acknowledgment(state: RAGState) -> RAGState:
+    """Handle acknowledgment messages with simple responses."""
+    import uuid
+    from langchain_core.messages import AIMessage
+    responses = [
+        "You're welcome! Feel free to ask if you need anything else.",
+        "Glad I could help! Let me know if you have other questions.",
+        "Happy to assist! Reach out anytime.",
+        "You're welcome! I'm here whenever you need support."
+    ]
+    response = responses[0]
+    response_message = AIMessage(content=response)
+    logger.info(f"Handled acknowledgment with simple response: '{response}'")
+    return {
+        "messages": [response_message],
+        "response_id": str(uuid.uuid4()),
+        "feedback_collected": True,  # Skip feedback for acknowledgments
+        "is_acknowledgment": True
+    }
+# --- END ACKNOWLEDGMENT HANDLING RESTORE ---
+
 def extract_query(state: RAGState) -> RAGState:
     """Extract query from messages and reset state for new conversations."""
     messages = state.get("messages", [])
@@ -322,6 +365,7 @@ def extract_query(state: RAGState) -> RAGState:
         query = "What is machine learning?"
 
     # For new conversations, reset all state variables
+    is_ack = is_acknowledgment_message(query)
     if is_new_conversation:
         logger.info(f"New conversation detected, resetting state for query: '{query[:50]}...'")
         return {
@@ -333,14 +377,15 @@ def extract_query(state: RAGState) -> RAGState:
             "is_social_media": False,
             "grade": "yes",
             "feedback_collected": False,
-            "waiting_for_feedback": False
+            "waiting_for_feedback": False,
+            "is_acknowledgment": is_ack
         }
     else:
         logger.info(f"Continuing conversation with query: '{query[:50]}...'")
-        return {"query": query}
+        return {"query": query, "is_acknowledgment": is_ack}
 
 def retrieve_documents(state: RAGState) -> RAGState:
-    """Retrieve relevant documents with feedback-enhanced scoring."""
+    """Retrieve relevant documents with feedback-enhanced scoring and fallback logic."""
     query = state["query"]
 
     # Get feedback storage for document scoring enhancement
@@ -353,11 +398,39 @@ def retrieve_documents(state: RAGState) -> RAGState:
     except ImportError:
         feedback_storage = None
 
-    # Use LangChain Chroma similarity search
-    results = vector_store.similarity_search(
-        query,
-        k=int(os.getenv("TOP_K", 3))
-    )
+    # --- FALLBACK RETRIEVAL LOGIC RESTORE ---
+    top_k = int(os.getenv("TOP_K", 3))
+    results = vector_store.similarity_search(query, k=top_k)
+    query_lower = query.lower()
+    key_topics = []
+    if "balance" in query_lower:
+        key_topics.append("work-life balance")
+    if "leadership" in query_lower:
+        key_topics.append("leadership")
+    if "professional" in query_lower:
+        key_topics.append("professional development")
+    if key_topics and len(results) < top_k:
+        for topic in key_topics:
+            topic_results = vector_store.similarity_search(topic, k=top_k//2)
+            seen_content = {doc.page_content for doc in results}
+            for doc in topic_results:
+                if doc.page_content not in seen_content and len(results) < top_k:
+                    results.append(doc)
+                    seen_content.add(doc.page_content)
+        logger.info(f"Added targeted search results for topics: {key_topics}")
+    if len(results) < top_k // 2:
+        query_terms = query.lower().split()
+        important_terms = [term for term in query_terms if len(term) > 3 and term not in ['what', 'how', 'why', 'when', 'where', 'give', 'make', 'create']]
+        if important_terms:
+            broader_query = ' '.join(important_terms[:3])
+            logger.info(f"Fallback search with broader query: '{broader_query}'")
+            additional_results = vector_store.similarity_search(broader_query, k=top_k)
+            seen_content = {doc.page_content for doc in results}
+            for doc in additional_results:
+                if doc.page_content not in seen_content and len(results) < top_k:
+                    results.append(doc)
+                    seen_content.add(doc.page_content)
+    # --- END FALLBACK RETRIEVAL LOGIC RESTORE ---
 
     # Apply feedback-based reranking if available
     if feedback_storage and results:
@@ -771,6 +844,7 @@ def create_rag_graph():
 
     # Add nodes
     workflow.add_node("extract_query", extract_query)
+    workflow.add_node("handle_acknowledgment", handle_acknowledgment)
     workflow.add_node("detect_social_media", detect_social_media_request)
     workflow.add_node("elicit_leader_and_tone", elicit_leader_and_tone)
     workflow.add_node("retrieve", retrieve_documents)
@@ -784,8 +858,14 @@ def create_rag_graph():
     workflow.set_entry_point("extract_query")
 
     # Simple linear pipeline
-    workflow.add_edge("extract_query", "detect_social_media")
-    workflow.add_edge("detect_social_media", "elicit_leader_and_tone")
+    workflow.add_conditional_edges(
+        "extract_query",
+        lambda x: "handle_acknowledgment" if x.get("is_acknowledgment", False) else "detect_social_media",
+        {
+            "handle_acknowledgment": "handle_acknowledgment",
+            "detect_social_media": "detect_social_media"
+        }
+    )
 
     # After elicit_leader_and_tone, check if we need to wait for user input
     workflow.add_conditional_edges(
