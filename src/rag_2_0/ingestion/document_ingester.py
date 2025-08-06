@@ -84,11 +84,13 @@ class DocumentIngester:
         duplicate_count = 0
 
         FOLDER_IDS = [
-            "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH",
-            "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ",
-            "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT",
-            "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8",
-            "1SBr_c2NwCuXsNZsjau37uxxq2qRQH1F6"
+            # "1zLK6qRuQGU1c7Y_d9Th5uQgUF_dss_uH",
+            # "1yjIqFXi13uO-aGiNPkGPiEkBGGS-3kFZ",
+            # "1QcaVSSrQm8REMO99cmnivNXrRGuuDELT",
+            # "1YaaD_hmb4nLgXYWi6aRdV79usTkgiRN8",
+            # "1SBr_c2NwCuXsNZsjau37uxxq2qRQH1F6"
+            # "1IGW5EgbUtGeK55NHAyU4n_wslwhwLGYV",
+            "11DZZ8o8g6a6H8_ea_LF-W3hRMG9oAQqn"
         ]
 
         credentials_path = os.getenv("GOOGLE_CREDENTIALS_PATH")
